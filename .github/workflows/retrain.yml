@@ -9,6 +9,10 @@ jobs:
   retrain:
     runs-on: ubuntu-latest
 
+    env:
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,6 +24,11 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Download dataset from Kaggle
+        run: |
+          mkdir -p data/raw
+          kaggle datasets download -d mlg-ulb/creditcardfraud -p data/raw/ --unzip
 
       - name: Run feature engineering
         run: python src/features/build_features.py

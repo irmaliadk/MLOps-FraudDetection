@@ -71,3 +71,34 @@ MLOps-FraudDetection/
 Proyek ini menggunakan **GitHub Flow**:
 - `main` — branch production, hanya menerima merge dari Pull Request
 - `feat/*` — branch untuk pengembangan fitur atau eksperimen baru
+
+## Cara Menjalankan Data Ingestion & Preprocessing
+
+### 1. Pastikan dataset sudah tersedia
+```bash
+ls data/raw/creditcard.csv
+```
+
+### 2. Jalankan script ingestion
+Script ini mengambil sampel data terbaru dan menyimpannya dengan timestamp
+sehingga data lama tidak tertimpa.
+```bash
+python src/ingest_data.py
+```
+Output: file baru di `data/raw/batch_YYYYMMDD_HHMMSS.csv`
+
+### 3. Jalankan script preprocessing
+Script ini membersihkan data mentah, menormalisasi fitur Amount,
+dan mengekstrak fitur Hour dari kolom Time.
+```bash
+python src/preprocess.py
+```
+Output: file baru di `data/processed/processed_YYYYMMDD_HHMMSS.csv`
+
+### 4. Menjalankan ulang secara periodik
+Kedua script dapat dijalankan ulang kapan saja tanpa menimpa data lama
+karena menggunakan timestamp pada nama file output.
+```bash
+python src/ingest_data.py
+python src/preprocess.py
+```

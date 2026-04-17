@@ -102,3 +102,39 @@ karena menggunakan timestamp pada nama file output.
 python src/ingest_data.py
 python src/preprocess.py
 ```
+## Alur Versioning Data dengan DVC
+
+### Cara kerja DVC di proyek ini
+DVC memungkinkan kita melacak perubahan data besar tanpa menyimpan
+file aslinya di Git. Yang tersimpan di Git hanya file `.dvc` (berisi
+hash/checksum), sedangkan file data aslinya diabaikan oleh Git.
+
+### Menambahkan versi data baru
+
+**1. Jalankan ingesti untuk generate data baru:**
+```bash
+python src/ingest_data.py
+```
+
+**2. Daftarkan file baru ke DVC:**
+```bash
+dvc add data/raw/batch_YYYYMMDD_HHMMSS.csv
+```
+
+**3. Commit perubahan ke Git:**
+```bash
+git add data/raw/batch_YYYYMMDD_HHMMSS.csv.dvc data/raw/.gitignore
+git commit -m "data: add new batch for continual learning"
+git push
+```
+
+**4. Cek status dan perbandingan versi:**
+```bash
+dvc status
+dvc diff
+```
+
+### Mengapa DVC?
+- File data bisa berukuran ratusan MB — tidak cocok disimpan di Git
+- DVC melacak perubahan data lewat hash, bukan isi filenya
+- Setiap versi data bisa direproduksi ulang kapan saja

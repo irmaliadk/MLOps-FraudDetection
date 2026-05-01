@@ -1,0 +1,20 @@
+model_registry:
+  name: fraud-detection-best-model
+  active_version: 2
+  stage: Production
+  algorithm: RandomForestClassifier
+  parameters:
+    n_estimators: 300
+    max_depth: 15
+    min_samples_split: 5
+    class_weight: balanced
+  metrics:
+    f1_score: 0.8171
+    roc_auc: 0.8526
+  dataset_version:
+    raw: data/raw/batch_20260417_223418.csv.dvc
+    processed: data/processed/creditcard_processed.csv.dvc
+  notes: >
+    Model v2 dipilih sebagai Production karena memiliki F1 Score
+    tertinggi dibanding versi sebelumnya. Model ini menggunakan
+    300 estimators dengan max_depth 15 untuk hasil yang lebih optimal.

@@ -138,3 +138,36 @@ dvc diff
 - File data bisa berukuran ratusan MB — tidak cocok disimpan di Git
 - DVC melacak perubahan data lewat hash, bukan isi filenya
 - Setiap versi data bisa direproduksi ulang kapan saja
+
+## Model Registry & Versioning
+
+### Model yang Aktif Digunakan untuk Inferensi
+
+| Detail | Value |
+|---|---|
+| Nama Model | fraud-detection-best-model |
+| Versi Aktif | v2 |
+| Stage | Production |
+| Algoritma | RandomForestClassifier |
+| n_estimators | 300 |
+| max_depth | 15 |
+| min_samples_split | 5 |
+
+### Alasan Pemilihan Model v2
+Model v2 dipilih sebagai versi Production karena menghasilkan F1 Score
+tertinggi dibanding v1 setelah dilakukan hyperparameter tuning dengan
+menambah jumlah estimators (300) dan mengatur max_depth (15).
+
+### Cara Memuat Model Production secara Programatik
+```python
+import mlflow.pyfunc
+
+model = mlflow.pyfunc.load_model("models:/fraud-detection-best-model/Production")
+predictions = model.predict(X)
+```
+
+### Alur Stage Model
+None → Staging → Production
+Setiap model baru yang dilatih pertama masuk ke stage Staging untuk
+divalidasi, baru kemudian dipromosikan ke Production jika performanya
+lebih baik dari versi sebelumnya.

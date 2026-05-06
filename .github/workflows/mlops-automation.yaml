@@ -33,7 +33,8 @@ jobs:
 
       - name: Stage 1 - Automated Testing
         run: |
-          python src/preprocess.py
+          python src/features/build_features.py
+          python src/models/train.py
           pytest tests/test_pipeline.py -v
 
       - name: Stage 2 - Automated Training

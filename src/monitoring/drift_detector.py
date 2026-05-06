@@ -2,6 +2,8 @@ import pandas as pd
 from evidently import Dataset, DataDefinition, Report
 from evidently.presets import DataDriftPreset
 from pathlib import Path
+import os
+os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
 
 def check_drift(reference_path: str, current_path: str) -> dict:
     """

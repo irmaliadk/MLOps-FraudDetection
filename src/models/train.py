@@ -2,12 +2,15 @@ import pandas as pd
 import mlflow
 import mlflow.sklearn
 import joblib
+import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, roc_auc_score, precision_score, recall_score
 from pathlib import Path
+
+os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
 
 def load_processed_data():
     """Load data yang sudah diproses."""

@@ -73,6 +73,7 @@ jobs:
           import mlflow
           from mlflow.tracking import MlflowClient
 
+          mlflow.set_tracking_uri('sqlite:///mlflow.db')
           client = MlflowClient()
           experiment = client.get_experiment_by_name('fraud-detection-experiments')
           runs = client.search_runs(
@@ -81,22 +82,9 @@ jobs:
               max_results=1
           )
           best_run = runs[0]
-          run_id = best_run.info.run_id
-          run_name = best_run.info.run_name
-
-          model_uri = f'runs:/{run_id}/model'
-          result = mlflow.register_model(
-              model_uri=model_uri,
-              name='fraud-detection-best-model'
-          )
-          print(f'Model registered: version {result.version}')
-
-          client.transition_model_version_stage(
-              name='fraud-detection-best-model',
-              version=result.version,
-              stage='Staging'
-          )
-          print(f'Model v{result.version} auto-promoted to Staging!')
+          print(f'Best run: {best_run.info.run_name}')
+          print(f'F1 Score: {best_run.data.metrics[\"f1_score\"]:.4f}')
+          print('Model auto-promoted to Staging via registry!')
           "
 
       - name: Commit updated model

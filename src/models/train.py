@@ -10,12 +10,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, roc_auc_score, precision_score, recall_score
 from pathlib import Path
 
-os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
-os.environ["MLFLOW_ARTIFACT_ROOT"] = "./mlruns"
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
 def load_processed_data():
-    """Load data yang sudah diproses."""
     df = pd.read_csv("data/processed/creditcard_processed.csv")
     X = df.drop("Class", axis=1)
     y = df["Class"]
@@ -23,7 +20,6 @@ def load_processed_data():
     return X, y
 
 def run_experiment(model, model_name: str, params: dict, X_train, X_test, y_train, y_test):
-    """Jalankan satu eksperimen dan log ke MLflow."""
     mlflow.set_experiment("fraud-detection-experiments")
 
     with mlflow.start_run(run_name=model_name):
@@ -42,7 +38,6 @@ def run_experiment(model, model_name: str, params: dict, X_train, X_test, y_trai
         mlflow.log_metric("roc_auc", auc)
         mlflow.log_metric("precision", precision)
         mlflow.log_metric("recall", recall)
-        mlflow.sklearn.log_model(model, "model")
 
         print(f"\n=== {model_name} ===")
         print(f"F1 Score  : {f1:.4f}")
@@ -50,7 +45,7 @@ def run_experiment(model, model_name: str, params: dict, X_train, X_test, y_trai
         print(f"Precision : {precision:.4f}")
         print(f"Recall    : {recall:.4f}")
 
-        return f1
+        return f1, model
 
 if __name__ == "__main__":
     X, y = load_processed_data()
@@ -86,7 +81,7 @@ if __name__ == "__main__":
     best_name  = ""
 
     for exp in experiments:
-        f1 = run_experiment(
+        f1, trained_model = run_experiment(
             model=exp["model"],
             model_name=exp["name"],
             params=exp["params"],
@@ -97,7 +92,7 @@ if __name__ == "__main__":
         )
         if f1 > best_f1:
             best_f1    = f1
-            best_model = exp["model"]
+            best_model = trained_model
             best_name  = exp["name"]
 
     Path("models/trained").mkdir(parents=True, exist_ok=True)

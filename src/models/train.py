@@ -11,6 +11,8 @@ from sklearn.metrics import f1_score, roc_auc_score, precision_score, recall_sco
 from pathlib import Path
 
 os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
+os.environ["MLFLOW_ARTIFACT_ROOT"] = "./mlruns"
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
 def load_processed_data():
     """Load data yang sudah diproses."""

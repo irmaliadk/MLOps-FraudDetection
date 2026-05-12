@@ -171,3 +171,43 @@ None → Staging → Production
 Setiap model baru yang dilatih pertama masuk ke stage Staging untuk
 divalidasi, baru kemudian dipromosikan ke Production jika performanya
 lebih baik dari versi sebelumnya.
+
+## Menjalankan Sistem dengan Docker Compose
+
+Seluruh sistem dapat dijalankan dengan satu perintah menggunakan Docker Compose.
+Sistem terdiri dari dua layanan yang berjalan dalam satu jaringan:
+- **api-service**: FastAPI inference endpoint di port 8000
+- **mlflow-server**: MLflow tracking server di port 5000
+
+### Prasyarat
+- Docker sudah terinstall
+- File `models/trained/fraud_model.pkl` sudah ada
+
+### Cara Menjalankan
+
+**1. Jalankan seluruh sistem:**
+```bash
+docker compose up -d
+```
+
+**2. Cek status container:**
+```bash
+docker compose ps
+```
+
+**3. Test API inference:**
+```bash
+curl http://localhost:8000/
+curl http://localhost:8000/health
+```
+
+**4. Matikan seluruh sistem:**
+```bash
+docker compose down
+```
+
+### Arsitektur Jaringan
+Kedua container berjalan dalam custom bridge network `mlops-network`
+sehingga dapat saling berkomunikasi menggunakan nama service sebagai hostname.
+Data MLflow tersimpan secara persisten di volume `mlflow-data`
+dan data model tersimpan di volume `model-data`.

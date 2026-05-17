@@ -5,8 +5,9 @@ mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
 def register_best_model():
     """
-    Ambil run terbaik dari MLflow dan daftarkan ke Model Registry
-    dengan transisi stage otomatis ke Staging lalu Production.
+    Ambil run terbaik dari MLflow dan daftarkan ke Model Registry.
+    Menggunakan model aliases (champion/challenger) sesuai MLflow 2.9+
+    sebagai pengganti stages yang sudah deprecated.
     """
     client = MlflowClient()
 
@@ -23,10 +24,10 @@ def register_best_model():
     if not runs:
         raise ValueError("Tidak ada run yang ditemukan!")
 
-    best_run    = runs[0]
-    run_id      = best_run.info.run_id
-    run_name    = best_run.info.run_name
-    f1          = best_run.data.metrics["f1_score"]
+    best_run = runs[0]
+    run_id   = best_run.info.run_id
+    run_name = best_run.info.run_name
+    f1       = best_run.data.metrics["f1_score"]
 
     print(f"Best run    : {run_name}")
     print(f"Run ID      : {run_id}")
@@ -37,31 +38,41 @@ def register_best_model():
         model_uri=model_uri,
         name="fraud-detection-best-model"
     )
+    version = result.version
+    print(f"Model registered as version {version}")
 
-    print(f"Model registered as version {result.version}")
+    all_versions = client.search_model_versions("name='fraud-detection-best-model'")
+    for v in all_versions:
+        if v.version != version:
+            try:
+                client.delete_registered_model_alias(
+                    name="fraud-detection-best-model",
+                    alias="champion"
+                )
+            except Exception:
+                pass
+            client.set_registered_model_alias(
+                name="fraud-detection-best-model",
+                version=v.version,
+                alias="challenger"
+            )
 
-    client.transition_model_version_stage(
+    client.set_registered_model_alias(
         name="fraud-detection-best-model",
-        version=result.version,
-        stage="Staging"
+        version=version,
+        alias="champion"
     )
-    print(f"Version {result.version} transitioned to Staging!")
-
-    client.transition_model_version_stage(
-        name="fraud-detection-best-model",
-        version=result.version,
-        stage="Production"
-    )
-    print(f"Version {result.version} transitioned to Production!")
+    print(f"Version {version} set as alias 'champion' (Production-equivalent)")
 
     client.update_model_version(
         name="fraud-detection-best-model",
-        version=result.version,
-        description=f"Best model from run {run_name} with F1 Score {f1:.4f}"
+        version=version,
+        description=f"Best model from run '{run_name}' | F1 Score: {f1:.4f}"
     )
 
-    return result.version
+    return version
 
 if __name__ == "__main__":
     version = register_best_model()
-    print(f"\n✅ Model v{version} successfully registered and promoted to Production!")
+    print(f"\n✅ Model v{version} successfully registered as champion!")
+    print("   Load via: mlflow.pyfunc.load_model('models:/fraud-detection-best-model@champion')")

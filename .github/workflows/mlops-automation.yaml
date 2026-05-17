@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '0 */6 * * *'  # Setiap 6 jam
+    - cron: '0 */6 * * *'
 
 jobs:
   test-train-evaluate:
@@ -36,11 +36,14 @@ jobs:
       - name: Preprocess streaming data
         run: python src/data/stream_preprocessor.py
 
-      - name: Stage 1 - Automated Testing
-        run: pytest tests/test_pipeline.py -v
+      - name: Stage 1 - Automated Testing (pre-training)
+        run: pytest tests/test_pipeline.py -v -k "not test_model_exists"
 
       - name: Stage 2 - Automated Training
         run: python src/models/train.py
+
+      - name: Stage 2b - Validate model artifact exists
+        run: pytest tests/test_pipeline.py::test_model_exists -v
 
       - name: Stage 3 - Model Evaluation & Validation
         run: |

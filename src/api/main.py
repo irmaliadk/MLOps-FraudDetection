@@ -1,18 +1,21 @@
-import joblib
+import mlflow.pyfunc
 import numpy as np
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-app = FastAPI(title="Fraud Detection API", version="1.0.0")
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
-model = joblib.load("models/trained/fraud_model.pkl")
+app = FastAPI(title="Fraud Detection API", version="2.0.0")
+
+model = mlflow.pyfunc.load_model("models:/fraud-detection-best-model/Production")
+print("Model loaded from MLflow Production registry!")
 
 class Transaction(BaseModel):
     features: list[float]
 
 @app.get("/")
 def root():
-    return {"message": "Fraud Detection API is running!"}
+    return {"message": "Fraud Detection API is running!", "data_source": "Binance BTCUSDT"}
 
 @app.get("/health")
 def health():
@@ -20,11 +23,11 @@ def health():
 
 @app.post("/predict")
 def predict(transaction: Transaction):
+    import pandas as pd
     features = np.array(transaction.features).reshape(1, -1)
-    prediction = model.predict(features)[0]
-    probability = model.predict_proba(features)[0][1]
+    df = pd.DataFrame(features)
+    prediction = model.predict(df)[0]
     return {
         "prediction": int(prediction),
-        "label": "FRAUD" if prediction == 1 else "LEGITIMATE",
-        "fraud_probability": round(float(probability), 4)
+        "label": "FRAUD" if prediction == 1 else "LEGITIMATE"
     }

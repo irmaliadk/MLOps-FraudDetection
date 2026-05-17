@@ -37,7 +37,7 @@ jobs:
         run: python src/data/stream_preprocessor.py
 
       - name: Stage 1 - Automated Testing
-        run: pytest tests/test_pipeline.py -v -k "not test_processed_data_exists and not test_processed_data_has_correct_columns and not test_no_missing_values and not test_class_distribution and not test_model_exists"
+        run: pytest tests/test_pipeline.py -v
 
       - name: Stage 2 - Automated Training
         run: python src/models/train.py

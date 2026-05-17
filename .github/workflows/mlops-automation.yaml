@@ -70,7 +70,7 @@ jobs:
           f1 = best_run.data.metrics['f1_score']
           print(f'Best F1 Score: {f1:.4f}')
 
-          THRESHOLD = 0.2
+          THRESHOLD = 0.7
           if f1 < THRESHOLD:
               print(f'FAILED: F1 Score {f1:.4f} below threshold {THRESHOLD}')
               exit(1)

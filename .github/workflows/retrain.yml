@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch fresh streaming data from Binance
+      - name: Fetch fresh streaming data from Kraken
         run: python src/data/stream_generator.py
 
       - name: Preprocess streaming data

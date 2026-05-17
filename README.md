@@ -28,32 +28,55 @@ rata-rata diklasifikasikan sebagai fraud.
 
 ```
 MLOps-FraudDetection/
-├── .devcontainer/         # Konfigurasi GitHub Codespaces
-│   └── devcontainer.json
+├── .devcontainer/
+│   └── devcontainer.json          # Konfigurasi GitHub Codespaces
+├── .dvc/
+│   ├── config                     # Konfigurasi DVC remote (DagsHub)
+│   └── .gitignore
 ├── .github/
 │   └── workflows/
-│       ├── retrain.yml            # Weekly retrain otomatis
-│       └── mlops-automation.yaml  # End-to-end CI/CD pipeline
+│       ├── mlops-automation.yaml  # End-to-end CI/CD pipeline
+│       └── retrain.yml            # Weekly retrain otomatis
+├── config/
+│   └── model_registry.yaml        # Metadata model aktif
 ├── data/
 │   ├── raw/
-│   │   └── streaming/     # Data mentah dari Binance API
-│   └── processed/
-│       └── streaming/     # Data setelah preprocessing
+│   │   └── streaming/             # Data mentah real-time dari Binance API
+│   ├── processed/
+│   │   └── streaming/             # Data setelah preprocessing
+│   └── external/                  # Data referensi eksternal
 ├── models/
-│   ├── trained/           # Model hasil training
-│   └── registry/          # Model registry
-├── notebooks/             # Jupyter notebooks eksplorasi
+│   ├── trained/
+│   │   └── fraud_model.pkl        # Model terbaik hasil training
+│   └── registry/                  # Model registry lokal
+├── mlruns/                        # Artifact MLflow experiment tracking
+├── notebooks/                     # Jupyter notebooks eksplorasi
+├── reports/
+│   └── drift_report.html          # Laporan drift detection Evidently
 ├── src/
-│   ├── data/              # Script ingestion & streaming
-│   ├── features/          # Script feature engineering
-│   ├── models/            # Script training & evaluasi
-│   ├── api/               # FastAPI inference endpoint
-│   └── monitoring/        # Drift detection & monitoring
-├── config/                # File konfigurasi
-├── tests/                 # Unit tests
-├── Dockerfile             # Container untuk API service
-├── docker-compose.yaml    # Orkestrasi multi-container
-├── requirements.txt       # Python dependencies
+│   ├── api/
+│   │   └── main.py                # FastAPI inference endpoint
+│   ├── data/
+│   │   ├── ingest.py              # Script ingestion data Binance
+│   │   ├── stream_generator.py    # Generator streaming data real-time
+│   │   └── stream_preprocessor.py # Preprocessing data streaming
+│   ├── features/
+│   │   └── build_features.py      # Feature engineering
+│   ├── models/
+│   │   ├── train.py               # Script training & MLflow logging
+│   │   └── register_model.py      # Script registrasi model ke MLflow Registry
+│   ├── monitoring/
+│   │   └── drift_detector.py      # Deteksi data drift dengan Evidently
+│   ├── ingest_data.py             # Entry point ingestion data
+│   └── preprocess.py              # Entry point preprocessing
+├── tests/
+│   └── test_pipeline.py           # Unit tests dengan pytest
+├── .dvcignore
+├── .gitignore
+├── Dockerfile                     # Container untuk API service
+├── docker-compose.yaml            # Orkestrasi multi-container
+├── mlflow.db                      # Database MLflow lokal
+├── requirements.txt               # Python dependencies
 └── README.md
 ```
 

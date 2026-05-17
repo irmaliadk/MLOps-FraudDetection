@@ -69,24 +69,7 @@ jobs:
           "
 
       - name: Stage 4 - Auto Registry Update
-        run: |
-          python -c "
-          import mlflow
-          from mlflow.tracking import MlflowClient
-
-          mlflow.set_tracking_uri('sqlite:///mlflow.db')
-          client = MlflowClient()
-          experiment = client.get_experiment_by_name('fraud-detection-experiments')
-          runs = client.search_runs(
-              experiment_ids=[experiment.experiment_id],
-              order_by=['metrics.f1_score DESC'],
-              max_results=1
-          )
-          best_run = runs[0]
-          print(f'Best run: {best_run.info.run_name}')
-          print(f'F1 Score: {best_run.data.metrics[\"f1_score\"]:.4f}')
-          print('Model auto-promoted to Staging!')
-          "
+        run: python src/models/register_model.py
 
       - name: Commit updated model
         run: |

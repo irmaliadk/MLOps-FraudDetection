@@ -28,7 +28,7 @@ def load_data() -> pd.DataFrame:
 def run_experiment(model, model_name: str, params: dict, X_train, X_test, y_train, y_test):
     mlflow.set_experiment("fraud-detection-experiments")
 
-    with mlflow.start_run(run_name=model_name):
+    with mlflow.start_run(run_name=model_name) as run:
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
 
@@ -45,13 +45,25 @@ def run_experiment(model, model_name: str, params: dict, X_train, X_test, y_trai
         mlflow.log_metric("precision", precision)
         mlflow.log_metric("recall", recall)
 
+        # Simpan model sebagai MLflow artifact
+        signature = mlflow.models.infer_signature(X_train, model.predict(X_train))
+        mlflow.sklearn.log_model(
+            sk_model=model,
+            artifact_path="model",
+            signature=signature,
+            registered_model_name=f"fraud-{model_name}"
+        )
+
+        run_id = run.info.run_id
+
         print(f"\n=== {model_name} ===")
         print(f"F1 Score  : {f1:.4f}")
         print(f"ROC AUC   : {auc:.4f}")
         print(f"Precision : {precision:.4f}")
         print(f"Recall    : {recall:.4f}")
+        print(f"Run ID    : {run_id}")
 
-        return f1, model
+        return f1, model, run_id
 
 if __name__ == "__main__":
     df = load_data()
@@ -88,9 +100,10 @@ if __name__ == "__main__":
     best_f1    = 0
     best_model = None
     best_name  = ""
+    best_run_id = ""
 
     for exp in experiments:
-        f1, trained_model = run_experiment(
+        f1, trained_model, run_id = run_experiment(
             model=exp["model"],
             model_name=exp["name"],
             params=exp["params"],
@@ -100,11 +113,13 @@ if __name__ == "__main__":
             y_test=y_test
         )
         if f1 > best_f1:
-            best_f1    = f1
-            best_model = trained_model
-            best_name  = exp["name"]
+            best_f1     = f1
+            best_model  = trained_model
+            best_name   = exp["name"]
+            best_run_id = run_id
 
     Path("models/trained").mkdir(parents=True, exist_ok=True)
     joblib.dump(best_model, "models/trained/fraud_model.pkl")
     print(f"\n✅ Best model: {best_name} with F1 Score: {best_f1:.4f}")
+    print(f"Best Run ID: {best_run_id}")
     print("Model saved to models/trained/fraud_model.pkl")

@@ -11,6 +11,8 @@ from sklearn.metrics import f1_score, roc_auc_score, precision_score, recall_sco
 from pathlib import Path
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_registry_uri("sqlite:///mlflow.db")
+os.environ["MLFLOW_ARTIFACT_ROOT"] = "./mlruns"
 
 def load_data() -> pd.DataFrame:
     """Load data streaming terbaru dari Binance."""

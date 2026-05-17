@@ -1,0 +1,32 @@
+artifact_path: /workspaces/MLOps-FraudDetection/mlruns/1/models/m-baa6a4945bae4c3787d84f2a9e41d32d/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.1
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.8.0
+    skops_trusted_types: null
+is_signature_from_type_hint: false
+mlflow_version: 3.10.1
+model_id: m-baa6a4945bae4c3787d84f2a9e41d32d
+model_size_bytes: 193494
+model_uuid: m-baa6a4945bae4c3787d84f2a9e41d32d
+prompts: null
+run_id: 38be300317154393b197f6be048180f9
+signature:
+  inputs: '[{"type": "double", "name": "amount_scaled", "required": true}, {"type":
+    "double", "name": "volume_scaled", "required": true}, {"type": "long", "name":
+    "hour", "required": true}, {"type": "long", "name": "minute", "required": true},
+    {"type": "long", "name": "is_sell", "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2026-05-17 20:12:03.144045'

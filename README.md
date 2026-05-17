@@ -18,10 +18,10 @@ Binary Classification — setiap transaksi diklasifikasikan sebagai:
 
 ## Sumber Data
 
-Menggunakan **Binance Public API** — data transaksi crypto BTCUSDT
+Menggunakan **Kraken Public API** — data transaksi crypto XBTUSD
 yang diambil secara real-time setiap 30 detik tanpa memerlukan API key.
 Label fraud ditentukan secara otomatis berdasarkan rules statistik:
-transaksi dengan amount atau quantity di atas 2 standar deviasi dari
+transaksi dengan amount atau volume di atas 2 standar deviasi dari
 rata-rata diklasifikasikan sebagai fraud.
 
 ## Struktur Direktori
@@ -41,7 +41,7 @@ MLOps-FraudDetection/
 │   └── model_registry.yaml        # Metadata model aktif
 ├── data/
 │   ├── raw/
-│   │   └── streaming/             # Data mentah real-time dari Binance API
+│   │   └── streaming/             # Data mentah real-time dari Kraken API
 │   ├── processed/
 │   │   └── streaming/             # Data setelah preprocessing
 │   └── external/                  # Data referensi eksternal
@@ -55,9 +55,10 @@ MLOps-FraudDetection/
 │   └── drift_report.html          # Laporan drift detection Evidently
 ├── src/
 │   ├── api/
-│   │   └── main.py                # FastAPI inference endpoint
+│   │   ├── main.py                # FastAPI inference endpoint
+│   │   └── serve.py               # MLflow model serving script
 │   ├── data/
-│   │   ├── ingest.py              # Script ingestion data Binance
+│   │   ├── ingest.py              # Script ingestion data Kraken
 │   │   ├── stream_generator.py    # Generator streaming data real-time
 │   │   └── stream_preprocessor.py # Preprocessing data streaming
 │   ├── features/
@@ -91,11 +92,11 @@ MLOps-FraudDetection/
 
 ## Cara Menjalankan Data Ingestion & Preprocessing
 
-### 1. Fetch data streaming dari Binance
+### 1. Fetch data streaming dari Kraken
 ```bash
 python src/data/stream_generator.py
 ```
-Output: file baru di `data/raw/streaming/BTCUSDT_YYYYMMDD_HHMMSS.csv`
+Output: file baru di `data/raw/streaming/XBTUSD_YYYYMMDD_HHMMSS.csv`
 
 ### 2. Preprocessing data streaming
 ```bash
@@ -108,14 +109,64 @@ Output: file baru di `data/processed/streaming/processed_YYYYMMDD_HHMMSS.csv`
 python src/models/train.py
 ```
 
-### 4. Cek drift
+### 4. Register model terbaik ke MLflow Registry
+```bash
+python src/models/register_model.py
+```
+
+### 5. Cek drift
 ```bash
 python src/monitoring/drift_detector.py
 ```
 
-### 5. Jalankan API inference
+### 6. Jalankan API inference
 ```bash
 uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+```
+
+## Model Serving & Horizontal Scaling
+
+### Menjalankan Model Serving
+Model dapat dijalankan sebagai REST API menggunakan script serving:
+```bash
+python src/api/serve.py
+```
+Endpoint tersedia di `http://localhost:5001`
+
+### Endpoint yang Tersedia
+| Endpoint | Method | Fungsi |
+|---|---|---|
+| `/ping` | GET | Health check |
+| `/health` | GET | Status API |
+| `/version` | GET | Info model |
+| `/invocations` | POST | Prediksi fraud |
+
+### Contoh Request Prediksi
+```bash
+curl -X POST http://localhost:5001/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "is_sell": 1,
+    "amount_scaled": 1.5,
+    "volume_scaled": 0.3,
+    "hour": 14,
+    "minute": 30
+  }'
+```
+
+### Horizontal Scaling dengan Docker Compose
+```bash
+# Jalankan 3 replika
+docker compose up -d
+
+# Cek status semua replika
+docker compose ps
+
+# Scale up ke 5 replika
+docker compose up -d --scale api-service=5
+
+# Scale down ke 1 replika
+docker compose up -d --scale api-service=1
 ```
 
 ## Menjalankan Sistem dengan Docker Compose
@@ -147,22 +198,22 @@ dvc diff
 | Detail | Value |
 |---|---|
 | Nama Model | fraud-detection-best-model |
-| Versi Aktif | v2 |
+| Versi Aktif | v6 |
 | Stage | Production |
-| Algoritma | LogisticRegression |
-| Best F1 Score | 0.8571 |
+| Algoritma | RandomForestClassifier |
+| Best F1 Score | 1.0000 |
 
 ## Tech Stack
 
 | Komponen | Tools |
 |---|---|
-| Sumber Data | Binance Public API |
-| Data versioning | DVC |
+| Sumber Data | Kraken Public API (XBTUSD) |
+| Data versioning | DVC + DagsHub |
 | Experiment tracking | MLflow |
-| Model serving | FastAPI |
+| Model serving | FastAPI + MLflow Registry |
 | Drift detection | Evidently AI |
 | CI/CD | GitHub Actions |
-| Orkestrasi | Docker Compose |
+| Orkestrasi | Docker Compose (3 replicas) |
 | ML Framework | scikit-learn |
 
 ## Branching Strategy

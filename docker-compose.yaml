@@ -22,9 +22,8 @@ services:
 
   api-service:
     build: .
-    container_name: fraud-detection-api
     ports:
-      - "8000:8000"
+      - "8000-8002:8000"
     networks:
       - mlops-network
     environment:
@@ -33,6 +32,11 @@ services:
       - mlflow-server
     volumes:
       - model-data:/app/models
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 512M
 
 networks:
   mlops-network:

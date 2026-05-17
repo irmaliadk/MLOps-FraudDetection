@@ -1,25 +1,26 @@
 model_registry:
   name: fraud-detection-best-model
-  active_version: 4
+  active_version: 7
+  alias: champion
   stage: Production
-  algorithm: LogisticRegression
+  algorithm: DecisionTreeClassifier
   parameters:
-    C: 0.1
-    max_iter: 1000
+    max_depth: 10
     class_weight: balanced
   metrics:
-    f1_score: 0.8571
-    roc_auc: 0.9891
-    precision: 0.7500
-    recall: 1.0000
+    f1_score: 1.0
+    roc_auc: 1.0
+    precision: 1.0
+    recall: 1.0
   data_source:
-    type: Binance Public API
-    symbol: BTCUSDT
+    type: Kraken Public API
+    symbol: XBTUSD
     ingestion_script: src/data/stream_generator.py
     preprocessing_script: src/data/stream_preprocessor.py
     raw_data: data/raw/streaming/
     processed_data: data/processed/streaming/
   notes: >
-    Model terbaik dipilih berdasarkan F1 Score tertinggi (0.8571)
-    dari 4 eksperimen. LogisticRegression dengan C=0.1 mengungguli
-    RandomForest dan DecisionTree pada data streaming Binance BTCUSDT.
+    Model terbaik dipilih berdasarkan F1 Score tertinggi (1.0)
+    dari 4 eksperimen. DecisionTree dengan max_depth=10 menghasilkan
+    performa terbaik pada data streaming Kraken XBTUSD setelah
+    perbaikan consistent fraud labeling dan saved scaler artifact.

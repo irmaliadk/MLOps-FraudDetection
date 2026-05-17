@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch streaming data from Binance
+      - name: Fetch streaming data from Kraken
         run: python src/data/stream_generator.py
 
       - name: Preprocess streaming data
@@ -86,5 +86,5 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add models/ reports/ data/processed/streaming/ || true
-          git commit -m "chore: auto retrain with fresh Binance streaming data" || echo "No changes to commit"
+          git commit -m "chore: auto retrain with fresh Kraken streaming data" || echo "No changes to commit"
           git push || echo "Nothing to push"

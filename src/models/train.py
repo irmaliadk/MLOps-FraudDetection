@@ -12,12 +12,26 @@ from pathlib import Path
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
-def load_processed_data():
-    df = pd.read_csv("data/processed/creditcard_processed.csv")
-    X = df.drop("Class", axis=1)
-    y = df["Class"]
-    print(f"Data loaded: {X.shape[0]} rows, {X.shape[1]} features")
-    return X, y
+def load_data() -> pd.DataFrame:
+    """
+    Load data streaming terbaru. 
+    Kalau ada data streaming pakai itu, kalau tidak fallback ke Kaggle.
+    """
+    streaming_path = Path("data/processed/streaming")
+    kaggle_path    = Path("data/processed/creditcard_processed.csv")
+
+    if streaming_path.exists() and any(streaming_path.glob("*.csv")):
+        files = sorted(streaming_path.glob("*.csv"))
+        dfs   = [pd.read_csv(f) for f in files]
+        df    = pd.concat(dfs, ignore_index=True).drop_duplicates()
+        print(f"Using streaming data: {len(df)} rows from {len(files)} batches")
+    elif kaggle_path.exists():
+        df = pd.read_csv(kaggle_path)
+        print(f"Using Kaggle data: {len(df)} rows")
+    else:
+        raise FileNotFoundError("Tidak ada data yang tersedia!")
+
+    return df
 
 def run_experiment(model, model_name: str, params: dict, X_train, X_test, y_train, y_test):
     mlflow.set_experiment("fraud-detection-experiments")
@@ -48,7 +62,10 @@ def run_experiment(model, model_name: str, params: dict, X_train, X_test, y_trai
         return f1, model
 
 if __name__ == "__main__":
-    X, y = load_processed_data()
+    df = load_data()
+    X  = df.drop("Class", axis=1)
+    y  = df["Class"]
+
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )

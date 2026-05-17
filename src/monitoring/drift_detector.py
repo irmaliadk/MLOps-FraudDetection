@@ -2,16 +2,32 @@ import pandas as pd
 from evidently import Dataset, DataDefinition, Report
 from evidently.presets import DataDriftPreset
 from pathlib import Path
-import os
-os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
 
-def check_drift(reference_path: str, current_path: str) -> dict:
-    """
-    Bandingkan distribusi data referensi vs data baru.
-    Kalau drift terdeteksi, model perlu diretrain.
-    """
-    reference_data = pd.read_csv(reference_path)
-    current_data   = pd.read_csv(current_path)
+def load_reference_data() -> pd.DataFrame:
+    """Load data referensi (batch pertama streaming)."""
+    streaming_path = Path("data/processed/streaming")
+    files = sorted(streaming_path.glob("*.csv"))
+    if not files:
+        raise FileNotFoundError("Tidak ada data streaming!")
+    df = pd.read_csv(files[0])
+    print(f"Reference data: {files[0].name} ({len(df)} rows)")
+    return df
+
+def load_current_data() -> pd.DataFrame:
+    """Load data terbaru (batch terakhir streaming)."""
+    streaming_path = Path("data/processed/streaming")
+    files = sorted(streaming_path.glob("*.csv"))
+    if len(files) < 2:
+        print("Hanya ada 1 batch, pakai data yang sama untuk simulasi.")
+        df = pd.read_csv(files[0])
+    else:
+        df = pd.read_csv(files[-1])
+        print(f"Current data: {files[-1].name} ({len(df)} rows)")
+    return df
+
+def check_drift() -> dict:
+    reference_data = load_reference_data()
+    current_data   = load_current_data()
 
     if "Class" in reference_data.columns:
         reference_data = reference_data.drop("Class", axis=1)
@@ -32,12 +48,9 @@ def check_drift(reference_path: str, current_path: str) -> dict:
     Path("reports").mkdir(parents=True, exist_ok=True)
     result.save_html("reports/drift_report.html")
     print("Report saved to reports/drift_report.html")
-    print("No drift — model masih relevan.")
+    print("Drift check complete!")
 
     return {"drift_detected": False}
 
 if __name__ == "__main__":
-    check_drift(
-        reference_path="data/processed/creditcard_processed.csv",
-        current_path="data/raw/week_0.csv"
-    )
+    check_drift()

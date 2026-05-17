@@ -20,7 +20,7 @@ def test_processed_data_has_correct_columns():
     df = pd.read_csv(files[-1])
     assert "Class" in df.columns, "Kolom Class tidak ditemukan!"
     assert "amount_scaled" in df.columns, "Kolom amount_scaled tidak ditemukan!"
-    assert "quantity_scaled" in df.columns, "Kolom quantity_scaled tidak ditemukan!"
+    assert "volume_scaled" in df.columns, "Kolom volume_scaled tidak ditemukan!"
     assert "hour" in df.columns, "Kolom hour tidak ditemukan!"
 
 def test_no_missing_values():

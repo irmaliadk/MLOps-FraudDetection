@@ -12,7 +12,9 @@ from pathlib import Path
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_registry_uri("sqlite:///mlflow.db")
-os.environ["MLFLOW_ARTIFACT_ROOT"] = "./mlruns"
+artifact_root = os.environ.get("MLFLOW_ARTIFACT_ROOT", "./mlruns")
+os.makedirs(artifact_root, exist_ok=True)
+os.environ["MLFLOW_ARTIFACT_ROOT"] = artifact_root
 
 def load_data() -> pd.DataFrame:
     """Load data streaming terbaru dari Binance."""

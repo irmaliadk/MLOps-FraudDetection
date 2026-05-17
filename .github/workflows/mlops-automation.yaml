@@ -39,6 +39,13 @@ jobs:
       - name: Stage 1 - Automated Testing (pre-training)
         run: pytest tests/test_pipeline.py -v -k "not test_model_exists"
 
+      - name: Setup MLflow environment
+        run: |
+          mkdir -p ./mlruns
+          rm -f mlflow.db
+          export MLFLOW_ARTIFACT_ROOT=$(pwd)/mlruns
+          echo "MLFLOW_ARTIFACT_ROOT=$(pwd)/mlruns" >> $GITHUB_ENV
+
       - name: Stage 2 - Automated Training
         run: python src/models/train.py
 

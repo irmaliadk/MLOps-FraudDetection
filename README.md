@@ -1,6 +1,6 @@
 # MLOps Fraud Detection System
 
-Sistem deteksi fraud pada transaksi perbankan yang dibangun dengan pendekatan MLOps,
+Sistem deteksi fraud pada transaksi keuangan yang dibangun dengan pendekatan MLOps,
 mencakup continual learning, data versioning, dan automated retraining pipeline.
 
 ## Tujuan Proyek
@@ -16,33 +16,67 @@ Binary Classification — setiap transaksi diklasifikasikan sebagai:
 - `0` : Transaksi legitimate
 - `1` : Transaksi fraud
 
-## Dataset
+## Sumber Data
 
-Menggunakan [Credit Card Fraud Detection](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud)
-dari Kaggle — 284.807 transaksi kartu kredit, dengan 492 kasus fraud (0.17%).
+Menggunakan **Binance Public API** — data transaksi crypto BTCUSDT
+yang diambil secara real-time setiap 30 detik tanpa memerlukan API key.
+Label fraud ditentukan secara otomatis berdasarkan rules statistik:
+transaksi dengan amount atau quantity di atas 2 standar deviasi dari
+rata-rata diklasifikasikan sebagai fraud.
 
 ## Struktur Direktori
+
 ```
 MLOps-FraudDetection/
-├── .devcontainer/         # Konfigurasi GitHub Codespaces
-│   └── devcontainer.json
+├── .devcontainer/
+│   └── devcontainer.json          # Konfigurasi GitHub Codespaces
+├── .dvc/
+│   ├── config                     # Konfigurasi DVC remote (DagsHub)
+│   └── .gitignore
+├── .github/
+│   └── workflows/
+│       ├── mlops-automation.yaml  # End-to-end CI/CD pipeline
+│       └── retrain.yml            # Weekly retrain otomatis
+├── config/
+│   └── model_registry.yaml        # Metadata model aktif
 ├── data/
-│   ├── raw/               # Data mentah dari sumber
-│   ├── processed/         # Data setelah cleaning & feature engineering
-│   └── external/          # Data referensi eksternal
+│   ├── raw/
+│   │   └── streaming/             # Data mentah real-time dari Binance API
+│   ├── processed/
+│   │   └── streaming/             # Data setelah preprocessing
+│   └── external/                  # Data referensi eksternal
 ├── models/
-│   ├── trained/           # Model hasil training
-│   └── registry/          # Model registry (versioning)
-├── notebooks/             # Jupyter notebooks untuk eksplorasi
+│   ├── trained/
+│   │   └── fraud_model.pkl        # Model terbaik hasil training
+│   └── registry/                  # Model registry lokal
+├── mlruns/                        # Artifact MLflow experiment tracking
+├── notebooks/                     # Jupyter notebooks eksplorasi
+├── reports/
+│   └── drift_report.html          # Laporan drift detection Evidently
 ├── src/
-│   ├── data/              # Script ingestion & preprocessing
-│   ├── features/          # Script feature engineering
-│   ├── models/            # Script training & evaluasi
-│   ├── api/               # FastAPI inference endpoint
-│   └── monitoring/        # Drift detection & monitoring
-├── config/                # File konfigurasi
-├── tests/                 # Unit tests
-├── requirements.txt       # Python dependencies
+│   ├── api/
+│   │   └── main.py                # FastAPI inference endpoint
+│   ├── data/
+│   │   ├── ingest.py              # Script ingestion data Binance
+│   │   ├── stream_generator.py    # Generator streaming data real-time
+│   │   └── stream_preprocessor.py # Preprocessing data streaming
+│   ├── features/
+│   │   └── build_features.py      # Feature engineering
+│   ├── models/
+│   │   ├── train.py               # Script training & MLflow logging
+│   │   └── register_model.py      # Script registrasi model ke MLflow Registry
+│   ├── monitoring/
+│   │   └── drift_detector.py      # Deteksi data drift dengan Evidently
+│   ├── ingest_data.py             # Entry point ingestion data
+│   └── preprocess.py              # Entry point preprocessing
+├── tests/
+│   └── test_pipeline.py           # Unit tests dengan pytest
+├── .dvcignore
+├── .gitignore
+├── Dockerfile                     # Container untuk API service
+├── docker-compose.yaml            # Orkestrasi multi-container
+├── mlflow.db                      # Database MLflow lokal
+├── requirements.txt               # Python dependencies
 └── README.md
 ```
 
@@ -52,18 +86,83 @@ MLOps-FraudDetection/
 2. Klik tombol hijau **"Code"**
 3. Pilih tab **"Codespaces"**
 4. Klik **"Create codespace on main"**
-5. Tunggu environment selesai dibangun (otomatis install semua dependencies)
-6. Selesai — environment siap digunakan tanpa setup manual
+5. Tunggu environment selesai dibangun
+6. Selesai — environment siap digunakan
+
+## Cara Menjalankan Data Ingestion & Preprocessing
+
+### 1. Fetch data streaming dari Binance
+```bash
+python src/data/stream_generator.py
+```
+Output: file baru di `data/raw/streaming/BTCUSDT_YYYYMMDD_HHMMSS.csv`
+
+### 2. Preprocessing data streaming
+```bash
+python src/data/stream_preprocessor.py
+```
+Output: file baru di `data/processed/streaming/processed_YYYYMMDD_HHMMSS.csv`
+
+### 3. Training model
+```bash
+python src/models/train.py
+```
+
+### 4. Cek drift
+```bash
+python src/monitoring/drift_detector.py
+```
+
+### 5. Jalankan API inference
+```bash
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+```
+
+## Menjalankan Sistem dengan Docker Compose
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+## Alur Versioning Data dengan DVC
+
+### Menambahkan versi data baru
+```bash
+python src/data/stream_generator.py
+dvc add data/raw/streaming/
+git add .
+git commit -m "data: add new streaming batch"
+git push
+```
+
+### Cek status dan perbandingan versi
+```bash
+dvc status
+dvc diff
+```
+
+## Model Registry & Versioning
+
+| Detail | Value |
+|---|---|
+| Nama Model | fraud-detection-best-model |
+| Versi Aktif | v2 |
+| Stage | Production |
+| Algoritma | LogisticRegression |
+| Best F1 Score | 0.8571 |
 
 ## Tech Stack
 
 | Komponen | Tools |
 |---|---|
+| Sumber Data | Binance Public API |
 | Data versioning | DVC |
 | Experiment tracking | MLflow |
 | Model serving | FastAPI |
 | Drift detection | Evidently AI |
 | CI/CD | GitHub Actions |
+| Orkestrasi | Docker Compose |
 | ML Framework | scikit-learn |
 
 ## Branching Strategy
@@ -71,143 +170,3 @@ MLOps-FraudDetection/
 Proyek ini menggunakan **GitHub Flow**:
 - `main` — branch production, hanya menerima merge dari Pull Request
 - `feat/*` — branch untuk pengembangan fitur atau eksperimen baru
-
-## Cara Menjalankan Data Ingestion & Preprocessing
-
-### 1. Pastikan dataset sudah tersedia
-```bash
-ls data/raw/creditcard.csv
-```
-
-### 2. Jalankan script ingestion
-Script ini mengambil sampel data terbaru dan menyimpannya dengan timestamp
-sehingga data lama tidak tertimpa.
-```bash
-python src/ingest_data.py
-```
-Output: file baru di `data/raw/batch_YYYYMMDD_HHMMSS.csv`
-
-### 3. Jalankan script preprocessing
-Script ini membersihkan data mentah, menormalisasi fitur Amount,
-dan mengekstrak fitur Hour dari kolom Time.
-```bash
-python src/preprocess.py
-```
-Output: file baru di `data/processed/processed_YYYYMMDD_HHMMSS.csv`
-
-### 4. Menjalankan ulang secara periodik
-Kedua script dapat dijalankan ulang kapan saja tanpa menimpa data lama
-karena menggunakan timestamp pada nama file output.
-```bash
-python src/ingest_data.py
-python src/preprocess.py
-```
-## Alur Versioning Data dengan DVC
-
-### Cara kerja DVC di proyek ini
-DVC memungkinkan kita melacak perubahan data besar tanpa menyimpan
-file aslinya di Git. Yang tersimpan di Git hanya file `.dvc` (berisi
-hash/checksum), sedangkan file data aslinya diabaikan oleh Git.
-
-### Menambahkan versi data baru
-
-**1. Jalankan ingesti untuk generate data baru:**
-```bash
-python src/ingest_data.py
-```
-
-**2. Daftarkan file baru ke DVC:**
-```bash
-dvc add data/raw/batch_YYYYMMDD_HHMMSS.csv
-```
-
-**3. Commit perubahan ke Git:**
-```bash
-git add data/raw/batch_YYYYMMDD_HHMMSS.csv.dvc data/raw/.gitignore
-git commit -m "data: add new batch for continual learning"
-git push
-```
-
-**4. Cek status dan perbandingan versi:**
-```bash
-dvc status
-dvc diff
-```
-
-### Mengapa DVC?
-- File data bisa berukuran ratusan MB — tidak cocok disimpan di Git
-- DVC melacak perubahan data lewat hash, bukan isi filenya
-- Setiap versi data bisa direproduksi ulang kapan saja
-
-## Model Registry & Versioning
-
-### Model yang Aktif Digunakan untuk Inferensi
-
-| Detail | Value |
-|---|---|
-| Nama Model | fraud-detection-best-model |
-| Versi Aktif | v2 |
-| Stage | Production |
-| Algoritma | RandomForestClassifier |
-| n_estimators | 300 |
-| max_depth | 15 |
-| min_samples_split | 5 |
-
-### Alasan Pemilihan Model v2
-Model v2 dipilih sebagai versi Production karena menghasilkan F1 Score
-tertinggi dibanding v1 setelah dilakukan hyperparameter tuning dengan
-menambah jumlah estimators (300) dan mengatur max_depth (15).
-
-### Cara Memuat Model Production secara Programatik
-```python
-import mlflow.pyfunc
-
-model = mlflow.pyfunc.load_model("models:/fraud-detection-best-model/Production")
-predictions = model.predict(X)
-```
-
-### Alur Stage Model
-None → Staging → Production
-Setiap model baru yang dilatih pertama masuk ke stage Staging untuk
-divalidasi, baru kemudian dipromosikan ke Production jika performanya
-lebih baik dari versi sebelumnya.
-
-## Menjalankan Sistem dengan Docker Compose
-
-Seluruh sistem dapat dijalankan dengan satu perintah menggunakan Docker Compose.
-Sistem terdiri dari dua layanan yang berjalan dalam satu jaringan:
-- **api-service**: FastAPI inference endpoint di port 8000
-- **mlflow-server**: MLflow tracking server di port 5000
-
-### Prasyarat
-- Docker sudah terinstall
-- File `models/trained/fraud_model.pkl` sudah ada
-
-### Cara Menjalankan
-
-**1. Jalankan seluruh sistem:**
-```bash
-docker compose up -d
-```
-
-**2. Cek status container:**
-```bash
-docker compose ps
-```
-
-**3. Test API inference:**
-```bash
-curl http://localhost:8000/
-curl http://localhost:8000/health
-```
-
-**4. Matikan seluruh sistem:**
-```bash
-docker compose down
-```
-
-### Arsitektur Jaringan
-Kedua container berjalan dalam custom bridge network `mlops-network`
-sehingga dapat saling berkomunikasi menggunakan nama service sebagai hostname.
-Data MLflow tersimpan secara persisten di volume `mlflow-data`
-dan data model tersimpan di volume `model-data`.

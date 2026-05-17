@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 */6 * * *'
 
 jobs:
   test-train-evaluate:
@@ -28,19 +30,27 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Download dataset from Kaggle
-        run: |
-          mkdir -p data/raw
-          kaggle datasets download -d mlg-ulb/creditcardfraud -p data/raw/ --unzip
+      - name: Fetch streaming data from Binance
+        run: python src/data/stream_generator.py
 
-      - name: Stage 1 - Automated Testing
+      - name: Preprocess streaming data
+        run: python src/data/stream_preprocessor.py
+
+      - name: Stage 1 - Automated Testing (pre-training)
+        run: pytest tests/test_pipeline.py -v -k "not test_model_exists"
+
+      - name: Setup MLflow environment
         run: |
-          python src/features/build_features.py
-          python src/models/train.py
-          pytest tests/test_pipeline.py -v
+          mkdir -p ./mlruns
+          rm -f mlflow.db
+          export MLFLOW_ARTIFACT_ROOT=$(pwd)/mlruns
+          echo "MLFLOW_ARTIFACT_ROOT=$(pwd)/mlruns" >> $GITHUB_ENV
 
       - name: Stage 2 - Automated Training
         run: python src/models/train.py
+
+      - name: Stage 2b - Validate model artifact exists
+        run: pytest tests/test_pipeline.py::test_model_exists -v
 
       - name: Stage 3 - Model Evaluation & Validation
         run: |
@@ -48,6 +58,7 @@ jobs:
           import mlflow
           from mlflow.tracking import MlflowClient
 
+          mlflow.set_tracking_uri('sqlite:///mlflow.db')
           client = MlflowClient()
           experiment = client.get_experiment_by_name('fraud-detection-experiments')
           runs = client.search_runs(
@@ -68,29 +79,12 @@ jobs:
           "
 
       - name: Stage 4 - Auto Registry Update
-        run: |
-          python -c "
-          import mlflow
-          from mlflow.tracking import MlflowClient
-
-          mlflow.set_tracking_uri('sqlite:///mlflow.db')
-          client = MlflowClient()
-          experiment = client.get_experiment_by_name('fraud-detection-experiments')
-          runs = client.search_runs(
-              experiment_ids=[experiment.experiment_id],
-              order_by=['metrics.f1_score DESC'],
-              max_results=1
-          )
-          best_run = runs[0]
-          print(f'Best run: {best_run.info.run_name}')
-          print(f'F1 Score: {best_run.data.metrics[\"f1_score\"]:.4f}')
-          print('Model auto-promoted to Staging via registry!')
-          "
+        run: python src/models/register_model.py
 
       - name: Commit updated model
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add models/ reports/ || true
-          git commit -m "chore: auto retrain and registry update" || echo "No changes to commit"
+          git add models/ reports/ data/processed/streaming/ || true
+          git commit -m "chore: auto retrain with fresh Binance streaming data" || echo "No changes to commit"
           git push || echo "Nothing to push"

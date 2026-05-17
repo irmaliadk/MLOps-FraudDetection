@@ -1,20 +1,25 @@
 model_registry:
   name: fraud-detection-best-model
-  active_version: 2
+  active_version: 4
   stage: Production
-  algorithm: RandomForestClassifier
+  algorithm: LogisticRegression
   parameters:
-    n_estimators: 300
-    max_depth: 15
-    min_samples_split: 5
+    C: 0.1
+    max_iter: 1000
     class_weight: balanced
   metrics:
-    f1_score: 0.8171
-    roc_auc: 0.8526
-  dataset_version:
-    raw: data/raw/batch_20260417_223418.csv.dvc
-    processed: data/processed/creditcard_processed.csv.dvc
+    f1_score: 0.8571
+    roc_auc: 0.9891
+    precision: 0.7500
+    recall: 1.0000
+  data_source:
+    type: Binance Public API
+    symbol: BTCUSDT
+    ingestion_script: src/data/stream_generator.py
+    preprocessing_script: src/data/stream_preprocessor.py
+    raw_data: data/raw/streaming/
+    processed_data: data/processed/streaming/
   notes: >
-    Model v2 dipilih sebagai Production karena memiliki F1 Score
-    tertinggi dibanding versi sebelumnya. Model ini menggunakan
-    300 estimators dengan max_depth 15 untuk hasil yang lebih optimal.
+    Model terbaik dipilih berdasarkan F1 Score tertinggi (0.8571)
+    dari 4 eksperimen. LogisticRegression dengan C=0.1 mengungguli
+    RandomForest dan DecisionTree pada data streaming Binance BTCUSDT.

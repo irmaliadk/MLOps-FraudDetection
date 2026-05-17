@@ -13,24 +13,16 @@ from pathlib import Path
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
 def load_data() -> pd.DataFrame:
-    """
-    Load data streaming terbaru. 
-    Kalau ada data streaming pakai itu, kalau tidak fallback ke Kaggle.
-    """
+    """Load data streaming terbaru dari Binance."""
     streaming_path = Path("data/processed/streaming")
-    kaggle_path    = Path("data/processed/creditcard_processed.csv")
+    files = sorted(streaming_path.glob("*.csv"))
 
-    if streaming_path.exists() and any(streaming_path.glob("*.csv")):
-        files = sorted(streaming_path.glob("*.csv"))
-        dfs   = [pd.read_csv(f) for f in files]
-        df    = pd.concat(dfs, ignore_index=True).drop_duplicates()
-        print(f"Using streaming data: {len(df)} rows from {len(files)} batches")
-    elif kaggle_path.exists():
-        df = pd.read_csv(kaggle_path)
-        print(f"Using Kaggle data: {len(df)} rows")
-    else:
-        raise FileNotFoundError("Tidak ada data yang tersedia!")
+    if not files:
+        raise FileNotFoundError("Tidak ada data streaming! Jalankan stream_generator.py dulu.")
 
+    dfs = [pd.read_csv(f) for f in files]
+    df  = pd.concat(dfs, ignore_index=True).drop_duplicates()
+    print(f"Using Binance streaming data: {len(df)} rows from {len(files)} batches")
     return df
 
 def run_experiment(model, model_name: str, params: dict, X_train, X_test, y_train, y_test):

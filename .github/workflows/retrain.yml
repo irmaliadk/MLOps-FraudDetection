@@ -2,16 +2,16 @@ name: Weekly Model Retrain
 
 on:
   schedule:
-    - cron: '0 0 * * 0'
-  workflow_dispatch:
+    - cron: '0 0 * * 0'  # Setiap Minggu jam 00:00
+  workflow_dispatch:       # Bisa dijalankan manual
 
 jobs:
   retrain:
     runs-on: ubuntu-latest
 
     env:
-      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+      MLFLOW_ARTIFACT_ROOT: ./mlruns
 
     steps:
       - name: Checkout repository
@@ -25,24 +25,22 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Download dataset from Kaggle
-        run: |
-          mkdir -p data/raw
-          kaggle datasets download -d mlg-ulb/creditcardfraud -p data/raw/ --unzip
+      - name: Fetch fresh streaming data from Binance
+        run: python src/data/stream_generator.py
 
-      - name: Run feature engineering
-        run: python src/features/build_features.py
-
-      - name: Check drift
-        run: python src/monitoring/drift_detector.py
+      - name: Preprocess streaming data
+        run: python src/data/stream_preprocessor.py
 
       - name: Run model training
         run: python src/models/train.py
+
+      - name: Check drift
+        run: python src/monitoring/drift_detector.py
 
       - name: Commit updated model
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
-          git add models/ reports/ || true
-          git commit -m "chore: retrain model automatically" || echo "No changes to commit"
+          git add models/ reports/ data/processed/streaming/ || true
+          git commit -m "chore: weekly retrain with fresh Binance streaming data" || echo "No changes to commit"
           git push || echo "Nothing to push"

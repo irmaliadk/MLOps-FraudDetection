@@ -15,49 +15,49 @@
 │      │  100 transaksi BTC/USD real-time                                 │
 │      ▼                                                                  │
 │  ┌─────────────────────┐                                                │
-│  │  1. DATA INGESTION  │  stream_generator.py                          │
-│  │  Ambil + label fraud│  → data/raw/streaming/*.csv                   │
+│  │  1. DATA INGESTION  │  stream_generator.py                           │
+│  │  Ambil + label fraud│  → data/raw/streaming/*.csv                    │
 │  └─────────┬───────────┘                                                │
-│            │  amount/volume > mean + 1 std → Class=1 (FRAUD)           │
+│            │  amount/volume > mean + 1 std → Class=1 (FRAUD)            │
 │            ▼                                                            │
 │  ┌─────────────────────┐                                                │
-│  │  2. PREPROCESSING   │  stream_preprocessor.py                       │
-│  │  Scale + engineer   │  → data/processed/streaming/*.csv             │
-│  └─────────┬───────────┘  scaler_amount.pkl + scaler_volume.pkl        │
+│  │  2. PREPROCESSING   │  stream_preprocessor.py                        │
+│  │  Scale + engineer   │  → data/processed/streaming/*.csv              │
+│  └─────────┬───────────┘  scaler_amount.pkl + scaler_volume.pkl         │
 │            │                                                            │
 │            ▼                                                            │
 │  ┌─────────────────────┐                                                │
-│  │  3. TRAINING        │  train.py                                     │
-│  │  4 model, best F1   │  → MLflow tracking (mlflow.db)                │
+│  │  3. TRAINING        │  train.py                                      │
+│  │  4 model, best F1   │  → MLflow tracking (mlflow.db)                 │
 │  └─────────┬───────────┘                                                │
 │            │                                                            │
 │            ▼                                                            │
 │  ┌─────────────────────┐                                                │
-│  │  4. QUALITY GATE    │  F1 Score > 0.7?                              │
-│  │  Stop jika gagal    │  false → Pipeline berhenti                    │
+│  │  4. QUALITY GATE    │  F1 Score > 0.7?                               │
+│  │  Stop jika gagal    │  false → Pipeline berhenti                     │
 │  └─────────┬───────────┘  true → Lanjut register                        │
 │            │                                                            │
 │            ▼                                                            │
 │  ┌─────────────────────┐                                                │
-│  │  5. MODEL REGISTRY  │  register_model.py                            │
-│  │  champion alias     │  → MLflow Model Registry                      │
+│  │  5. MODEL REGISTRY  │  register_model.py                             │
+│  │  champion alias     │  → MLflow Model Registry                       │
 │  └─────────┬───────────┘                                                │
 │            │                                                            │
 │            ▼                                                            │
 │  ┌─────────────────────┐                                                │
-│  │  6. API SERVING     │  FastAPI main.py                              │
-│  │  POST /predict      │  → FRAUD / LEGITIMATE + probabilitas          │
-│  └─────────┬───────────┘  3 replika Docker                             │
+│  │  6. API SERVING     │  FastAPI main.py                               │
+│  │  POST /predict      │  → FRAUD / LEGITIMATE + probabilitas           │
+│  └─────────┬───────────┘  3 replika Docker                              │
 │            │                                                            │
 │            ▼                                                            │
 │  ┌─────────────────────┐                                                │
-│  │  7. MONITORING      │  drift_detector.py                            │
-│  │  Data drift check   │  → reports/drift_report.html                  │
+│  │  7. MONITORING      │  drift_detector.py                             │
+│  │  Data drift check   │  → reports/drift_report.html                   │
 │  └─────────────────────┘                                                │
 │            │                                                            │
-│            └──────────────────────────────────────────────────────┐    │
-│                          Auto retrain (GitHub Actions)            │    │
-│                          tiap push / tiap minggu ──────────────►  ▲    │
+│            └──────────────────────────────────────────────────────┐     │
+│                          Auto retrain (GitHub Actions)            │     │
+│                          tiap push / tiap minggu ──────────────►  ▲     │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 

@@ -46,13 +46,13 @@ def test_model_exists():
 
 def test_ingest_script_exists():
     """Pastikan script ingestion ada."""
-    assert Path("src/stream_generator.py").exists(), \
+    assert Path("src/data/stream_generator.py").exists(), \
         "Script stream_generator.py tidak ditemukan!"
 
 def test_preprocess_script_exists():
     """Pastikan script preprocessing ada."""
-    assert Path("src/preprocess.py").exists(), \
-        "Script preprocess.py tidak ditemukan!"
+    assert Path("src/data/stream_preprocessor.py").exists(), \
+        "Script stream_preprocessor.py tidak ditemukan!"
 
 def test_stream_generator_exists():
     """Pastikan script stream generator ada."""

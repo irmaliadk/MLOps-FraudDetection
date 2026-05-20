@@ -1,223 +1,474 @@
 # MLOps Fraud Detection System
 
-Sistem deteksi fraud pada transaksi keuangan yang dibangun dengan pendekatan MLOps,
-mencakup continual learning, data versioning, dan automated retraining pipeline.
+> **Sistem deteksi fraud transaksi crypto real-time yang belajar otomatis dari data baru.**
+> Binary classification — setiap transaksi Bitcoin/USD diklasifikasikan sebagai `FRAUD` atau `LEGITIMATE`.
 
-## Tujuan Proyek
+---
 
-Membangun sistem ML production-ready yang mampu:
-- Mendeteksi transaksi fraud secara real-time
-- Beradaptasi terhadap perubahan pola fraud (data drift)
-- Melakukan retraining model secara otomatis dan terjadwal
+## Arsitektur Pipeline (Big Picture)
 
-## ML Task
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        MLOPS FRAUD DETECTION PIPELINE                   │
+│                                                                         │
+│  [Kraken API]                                                           │
+│      │  100 transaksi BTC/USD real-time                                 │
+│      ▼                                                                  │
+│  ┌─────────────────────┐                                                │
+│  │  1. DATA INGESTION  │  stream_generator.py                          │
+│  │  Ambil + label fraud│  → data/raw/streaming/*.csv                   │
+│  └─────────┬───────────┘                                                │
+│            │  amount/volume > mean + 1 std → Class=1 (FRAUD)           │
+│            ▼                                                            │
+│  ┌─────────────────────┐                                                │
+│  │  2. PREPROCESSING   │  stream_preprocessor.py                       │
+│  │  Scale + engineer   │  → data/processed/streaming/*.csv             │
+│  └─────────┬───────────┘  scaler_amount.pkl + scaler_volume.pkl        │
+│            │                                                            │
+│            ▼                                                            │
+│  ┌─────────────────────┐                                                │
+│  │  3. TRAINING        │  train.py                                     │
+│  │  4 model, best F1   │  → MLflow tracking (mlflow.db)                │
+│  └─────────┬───────────┘                                                │
+│            │                                                            │
+│            ▼                                                            │
+│  ┌─────────────────────┐                                                │
+│  │  4. QUALITY GATE    │  F1 Score > 0.7?                              │
+│  │  Stop jika gagal    │  false → Pipeline berhenti                    │
+│  └─────────┬───────────┘  true → Lanjut register                        │
+│            │                                                            │
+│            ▼                                                            │
+│  ┌─────────────────────┐                                                │
+│  │  5. MODEL REGISTRY  │  register_model.py                            │
+│  │  champion alias     │  → MLflow Model Registry                      │
+│  └─────────┬───────────┘                                                │
+│            │                                                            │
+│            ▼                                                            │
+│  ┌─────────────────────┐                                                │
+│  │  6. API SERVING     │  FastAPI main.py                              │
+│  │  POST /predict      │  → FRAUD / LEGITIMATE + probabilitas          │
+│  └─────────┬───────────┘  3 replika Docker                             │
+│            │                                                            │
+│            ▼                                                            │
+│  ┌─────────────────────┐                                                │
+│  │  7. MONITORING      │  drift_detector.py                            │
+│  │  Data drift check   │  → reports/drift_report.html                  │
+│  └─────────────────────┘                                                │
+│            │                                                            │
+│            └──────────────────────────────────────────────────────┐    │
+│                          Auto retrain (GitHub Actions)            │    │
+│                          tiap push / tiap minggu ──────────────►  ▲    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-Binary Classification — setiap transaksi diklasifikasikan sebagai:
-- `0` : Transaksi legitimate
-- `1` : Transaksi fraud
+---
 
-## Sumber Data
+## Kenapa MLOps?
 
-Menggunakan **Kraken Public API** — data transaksi crypto XBTUSD
-yang diambil secara real-time setiap 30 detik tanpa memerlukan API key.
-Label fraud ditentukan secara otomatis berdasarkan rules statistik:
-transaksi dengan amount atau volume di atas 2 standar deviasi dari
-rata-rata diklasifikasikan sebagai fraud.
+| Tanpa MLOps | Dengan MLOps (proyek ini) |
+|---|---|
+| Training manual tiap ada data baru | Retrain otomatis tiap minggu via GitHub Actions |
+| Model tidak terpantau di production | Drift detection dengan Evidently AI |
+| Tidak ada versioning model | MLflow Registry dengan alias champion/challenger |
+| Tidak bisa rollback model buruk | Challenger = versi lama siap dipakai kembali |
+| Deploy manual, error-prone | CI/CD pipeline otomatis end-to-end |
+
+---
 
 ## Struktur Direktori
 
 ```
 MLOps-FraudDetection/
 ├── .devcontainer/
-│   └── devcontainer.json          # Konfigurasi GitHub Codespaces
+│   └── devcontainer.json          # GitHub Codespaces config
 ├── .dvc/
-│   ├── config                     # Konfigurasi DVC remote (DagsHub)
-│   └── .gitignore
-├── .github/
-│   └── workflows/
-│       ├── mlops-automation.yaml  # End-to-end CI/CD pipeline
-│       └── retrain.yml            # Weekly retrain otomatis
+│   └── config                     # DVC remote → DagsHub
+├── .github/workflows/
+│   ├── mlops-automation.yaml      # CI/CD end-to-end (push/tiap 6 jam)
+│   └── retrain.yml                # Weekly retrain otomatis
 ├── config/
 │   └── model_registry.yaml        # Metadata model aktif
 ├── data/
-│   ├── raw/
-│   │   └── streaming/             # Data mentah real-time dari Kraken API
-│   ├── processed/
-│   │   └── streaming/             # Data setelah preprocessing
-│   └── external/                  # Data referensi eksternal
+│   ├── raw/streaming/             # CSV mentah dari Kraken API
+│   └── processed/streaming/       # CSV setelah preprocessing
 ├── models/
-│   ├── trained/
-│   │   └── fraud_model.pkl        # Model terbaik hasil training
-│   └── registry/                  # Model registry lokal
-├── mlruns/                        # Artifact MLflow experiment tracking
-├── notebooks/                     # Jupyter notebooks eksplorasi
+│   ├── trained/fraud_model.pkl    # Model terbaik (best F1)
+│   └── scalers/                   # scaler_amount.pkl + scaler_volume.pkl
 ├── reports/
-│   └── drift_report.html          # Laporan drift detection Evidently
+│   └── drift_report.html          # Laporan drift (buka di browser)
 ├── src/
 │   ├── api/
-│   │   ├── main.py                # FastAPI inference endpoint
-│   │   └── serve.py               # MLflow model serving script
+│   │   ├── main.py                # FastAPI /predict endpoint
+│   │   └── serve.py               # MLflow serve /invocations
 │   ├── data/
-│   │   ├── ingest.py              # Script ingestion data Kraken
-│   │   ├── stream_generator.py    # Generator streaming data real-time
-│   │   └── stream_preprocessor.py # Preprocessing data streaming
-│   ├── features/
-│   │   └── build_features.py      # Feature engineering
+│   │   ├── stream_generator.py    # Ambil data Kraken + label fraud
+│   │   └── stream_preprocessor.py # Clean + scale + feature engineering
 │   ├── models/
-│   │   ├── train.py               # Script training & MLflow logging
-│   │   └── register_model.py      # Script registrasi model ke MLflow Registry
-│   ├── monitoring/
-│   │   └── drift_detector.py      # Deteksi data drift dengan Evidently
-│   ├── ingest_data.py             # Entry point ingestion data
-│   └── preprocess.py              # Entry point preprocessing
+│   │   ├── train.py               # Training 4 model + MLflow logging
+│   │   └── register_model.py      # Daftarkan model ke registry
+│   └── monitoring/
+│       └── drift_detector.py      # Deteksi data drift
 ├── tests/
-│   └── test_pipeline.py           # Unit tests dengan pytest
-├── .dvcignore
-├── .gitignore
-├── Dockerfile                     # Container untuk API service
-├── docker-compose.yaml            # Orkestrasi multi-container
-├── mlflow.db                      # Database MLflow lokal
-├── requirements.txt               # Python dependencies
-└── README.md
+│   └── test_pipeline.py           # Unit tests (pytest)
+├── docker-compose.yaml            # 3 replika api-service + mlflow-server
+├── Dockerfile
+└── requirements.txt
 ```
 
-## Cara Menjalankan dengan GitHub Codespaces
+---
 
-1. Buka repositori ini di GitHub
-2. Klik tombol hijau **"Code"**
-3. Pilih tab **"Codespaces"**
-4. Klik **"Create codespace on main"**
-5. Tunggu environment selesai dibangun
-6. Selesai — environment siap digunakan
+## Detail Tiap Komponen
 
-## Cara Menjalankan Data Ingestion & Preprocessing
+### 1. Data Ingestion — `stream_generator.py`
 
-### 1. Fetch data streaming dari Kraken
+**Apa yang dilakukan:**
+- Hubungi Kraken Public API (tanpa API key)
+- Ambil 100 transaksi BTC/USD terbaru
+- Hitung **global stats** (mean & std dari amount/volume) — diakumulasi, bukan di-reset
+- Label fraud: `amount > mean + 1*std` ATAU `volume > mean + 1*std` → `Class=1`
+- Simpan ke `data/raw/streaming/XBTUSD_YYYYMMDD_HHMMSS.csv`
+
+**Kenapa global stats penting:**
+Threshold fraud tidak dihitung ulang tiap batch. Digunakan weighted average dari semua batch sebelumnya → label konsisten antar waktu.
+
 ```bash
 python src/data/stream_generator.py
 ```
-Output: file baru di `data/raw/streaming/XBTUSD_YYYYMMDD_HHMMSS.csv`
 
-### 2. Preprocessing data streaming
+---
+
+### 2. Preprocessing — `stream_preprocessor.py`
+
+**Transformasi yang dilakukan:**
+
+| Langkah | Detail |
+|---|---|
+| Hapus missing values | `df.dropna()` |
+| Hapus duplikat | `df.drop_duplicates()` |
+| Scale amount | `StandardScaler` → `amount_scaled` |
+| Scale volume | `StandardScaler` → `volume_scaled` |
+| Ekstrak waktu | `timestamp` → `hour`, `minute` |
+| Encode side | `s` = sell → `is_sell=1`, `b` = buy → `is_sell=0` |
+
+**Krusial:** Scaler di-fit sekali saat training, lalu **disimpan** ke `models/scalers/scaler_amount.pkl`. Saat inference, scaler yang sama di-load ulang. Kalau berbeda → prediksi salah total.
+
+**5 fitur final yang masuk ke model:**
+`amount_scaled`, `volume_scaled`, `hour`, `minute`, `is_sell`
+
 ```bash
 python src/data/stream_preprocessor.py
 ```
-Output: file baru di `data/processed/streaming/processed_YYYYMMDD_HHMMSS.csv`
 
-### 3. Training model
+---
+
+### 3. Training — `train.py`
+
+**4 model yang dijalankan sekaligus:**
+
+| Model | Parameter |
+|---|---|
+| RandomForest | n_estimators=100 |
+| RandomForest | n_estimators=200, max_depth=10 |
+| DecisionTree | max_depth=10 |
+| LogisticRegression | C=0.1 |
+
+**Semua dicatat ke MLflow:**
+- `mlflow.log_param()` → hyperparameter
+- `mlflow.log_metric()` → F1, AUC, precision, recall
+- `mlflow.sklearn.log_model()` → simpan model artifact
+
+**Split data:** 80% train / 20% test, `stratify=y` (proporsi fraud seimbang)
+
+**Kenapa F1, bukan Accuracy?**
+Data sangat imbalanced. Model yang selalu prediksi "legitimate" pun bisa accuracy 95% tapi F1=0. F1 mempertimbangkan precision & recall sekaligus.
+
 ```bash
 python src/models/train.py
 ```
 
-### 4. Register model terbaik ke MLflow Registry
+---
+
+### 4. Model Registry — `register_model.py`
+
+**Alur:**
+1. Ambil run MLflow dengan F1 tertinggi
+2. Register ke MLflow Model Registry → nama `fraud-detection-best-model`
+3. Versi baru dapat alias **`champion`** (active di production)
+4. Versi sebelumnya dapat alias **`challenger`** (backup, siap rollback)
+
+**Kenapa alias, bukan stage?**
+MLflow 2.9+ sudah deprecated stage (Staging/Production). Alias adalah cara yang direkomendasikan sekarang.
+
 ```bash
 python src/models/register_model.py
 ```
 
-### 5. Cek drift
+---
+
+### 5. API Serving — `main.py`
+
+**Endpoint:**
+
+| Method | URL | Fungsi |
+|---|---|---|
+| GET | `/` | Health check |
+| GET | `/health` | Status API + info model |
+| POST | `/predict` | Prediksi fraud |
+
+**Input (nilai RAW, bukan scaled):**
+```json
+{
+  "is_sell": 1,
+  "amount": 103500.25,
+  "volume": 0.00234,
+  "hour": 14,
+  "minute": 30
+}
+```
+
+**Output:**
+```json
+{
+  "prediction": 1,
+  "label": "FRAUD",
+  "fraud_probability": 0.87,
+  "model_version": "champion"
+}
+```
+
+**Load model:** Prioritas dari MLflow Registry `@champion`, fallback ke `.pkl` lokal jika registry tidak tersedia.
+
+```bash
+# Jalankan API lokal
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+
+# Test prediksi
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"is_sell": 1, "amount": 103500.25, "volume": 0.00234, "hour": 14, "minute": 30}'
+```
+
+---
+
+### 6. Monitoring Drift — `drift_detector.py`
+
+**Cara kerja:**
+- Ambil batch pertama sebagai **reference dataset**
+- Ambil batch terbaru sebagai **current dataset**
+- Bandingkan distribusi fitur menggunakan **Evidently AI**
+- Generate laporan HTML ke `reports/drift_report.html`
+
+**Apa itu data drift?**
+Pola data di production berubah dari pola saat training. Contoh: market crash → pola transaksi BTC berubah drastis → model lama tidak relevan → perlu retrain.
+
 ```bash
 python src/monitoring/drift_detector.py
+# Buka laporan:
+open reports/drift_report.html
 ```
 
-### 6. Jalankan API inference
-```bash
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000
-```
+---
 
-## Model Serving & Horizontal Scaling
+### 7. Data Versioning — DVC
 
-### Menjalankan Model Serving
-Model dapat dijalankan sebagai REST API menggunakan script serving:
-```bash
-python src/api/serve.py
-```
-Endpoint tersedia di `http://localhost:5001`
-
-### Endpoint yang Tersedia
-| Endpoint | Method | Fungsi |
-|---|---|---|
-| `/ping` | GET | Health check |
-| `/health` | GET | Status API |
-| `/version` | GET | Info model |
-| `/invocations` | POST | Prediksi fraud |
-
-### Contoh Request Prediksi
-```bash
-curl -X POST http://localhost:5001/invocations \
-  -H "Content-Type: application/json" \
-  -d '{
-    "is_sell": 1,
-    "amount_scaled": 1.5,
-    "volume_scaled": 0.3,
-    "hour": 14,
-    "minute": 30
-  }'
-```
-
-### Horizontal Scaling dengan Docker Compose
-```bash
-# Jalankan 3 replika
-docker compose up -d
-
-# Cek status semua replika
-docker compose ps
-
-# Scale up ke 5 replika
-docker compose up -d --scale api-service=5
-
-# Scale down ke 1 replika
-docker compose up -d --scale api-service=1
-```
-
-## Menjalankan Sistem dengan Docker Compose
+DVC memisahkan versioning **kode** (Git) dari versioning **data** (DVC remote → DagsHub).
 
 ```bash
-docker compose up -d
-docker compose ps
-```
-
-## Alur Versioning Data dengan DVC
-
-### Menambahkan versi data baru
-```bash
-python src/data/stream_generator.py
+# Setelah fetch data baru:
 dvc add data/raw/streaming/
 git add .
-git commit -m "data: add new streaming batch"
+git commit -m "data: add new batch YYYYMMDD"
 git push
-```
 
-### Cek status dan perbandingan versi
-```bash
+# Cek perubahan versi data:
 dvc status
 dvc diff
 ```
 
-## Model Registry & Versioning
+---
 
-| Detail | Value |
-|---|---|
-| Nama Model | fraud-detection-best-model |
-| Versi Aktif | v6 |
-| Stage | Production |
-| Algoritma | RandomForestClassifier |
-| Best F1 Score | 1.0000 |
+## Docker Compose
 
-## Tech Stack
+**Arsitektur container:**
 
-| Komponen | Tools |
-|---|---|
-| Sumber Data | Kraken Public API (XBTUSD) |
-| Data versioning | DVC + DagsHub |
-| Experiment tracking | MLflow |
-| Model serving | FastAPI + MLflow Registry |
-| Drift detection | Evidently AI |
-| CI/CD | GitHub Actions |
-| Orkestrasi | Docker Compose (3 replicas) |
-| ML Framework | scikit-learn |
+```
+┌─────────────────────────────────────┐
+│          mlops-network              │
+│                                     │
+│  ┌──────────────────┐               │
+│  │  mlflow-server   │ :5000         │
+│  │  SQLite backend  │               │
+│  └────────┬─────────┘               │
+│           │ depends_on              │
+│  ┌────────┴────────────────────┐    │
+│  │  api-service (3 replicas)   │    │
+│  │  :8000 / :8001 / :8002      │    │
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
+```
 
-## Branching Strategy
+```bash
+# Jalankan semua service
+docker compose up -d
 
-Proyek ini menggunakan **GitHub Flow**:
-- `main` — branch production, hanya menerima merge dari Pull Request
-- `feat/*` — branch untuk pengembangan fitur atau eksperimen baru
+# Cek status replika (harus ada 3 api-service)
+docker compose ps
+
+# Scale manual
+docker compose up -d --scale api-service=5
+
+# Stop semua
+docker compose down
+```
+
+**Kenapa 3 replika?** Horizontal scaling — beban request dibagi ke 3 container. Kalau satu mati, dua yang lain masih jalan (high availability).
+
+---
+
+## ⚙️ CI/CD — GitHub Actions
+
+### `mlops-automation.yaml` — Full Pipeline
+**Trigger:** Push ke `main`, Pull Request, atau tiap 6 jam (cron)
+
+```
+Push/PR/Cron
+     │
+     ▼
+1. Fetch data (stream_generator.py)
+     │
+     ▼
+2. Preprocessing (stream_preprocessor.py)
+     │
+     ▼
+3. Unit tests (pytest)
+     │
+     ▼
+4. Training (train.py)
+     │
+     ▼
+5. Cek F1 > 0.7 ──── Gagal → pipeline STOP (model tidak di-deploy)
+     │ Lolos
+     ▼
+6. Register model (register_model.py) → champion alias
+```
+
+### `retrain.yml` — Weekly Retrain
+**Trigger:** Setiap Minggu jam 00:00 atau manual dispatch
+
+```
+Setiap Minggu
+     │
+     ▼
+1. Fetch data baru
+2. Preprocessing
+3. Training ulang
+4. Cek data drift
+```
+
+---
+
+## Demo Flow
+
+### Step 1 — Tampilkan MLflow UI
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+# Buka: http://localhost:5000
+```
+Yang ditunjukkan: list run, grafik F1 per model, parameter tiap eksperimen.
+
+### Step 2 — Jalankan API
+```bash
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### Step 3 — Demo Prediksi (transaksi normal)
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"is_sell": 0, "amount": 95000.0, "volume": 0.001, "hour": 10, "minute": 15}'
+```
+Expected: `LEGITIMATE`
+
+### Step 4 — Demo Prediksi (transaksi mencurigakan)
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"is_sell": 1, "amount": 500000.0, "volume": 99.9, "hour": 3, "minute": 47}'
+```
+Expected: `FRAUD`
+
+### Step 5 — Tampilkan Docker Compose
+```bash
+docker compose up -d
+docker compose ps
+# Tunjukkan 3 replika api-service berjalan
+```
+
+### Step 6 — Tampilkan Drift Report
+```bash
+open reports/drift_report.html
+```
+
+### Step 7 — Tampilkan GitHub Actions
+Buka tab **Actions** di GitHub repo → tunjukkan riwayat pipeline yang pernah jalan.
+
+---
+
+## 🛠️ Tech Stack
+
+| Komponen | Tools | Fungsi |
+|---|---|---|
+| Sumber data | Kraken Public API | 100 transaksi BTC/USD real-time |
+| ML framework | scikit-learn | Training model |
+| Experiment tracking | MLflow | Log params, metrics, model artifact |
+| Model registry | MLflow Registry | Versioning + alias champion/challenger |
+| API serving | FastAPI | Endpoint `/predict` |
+| Drift detection | Evidently AI | Laporan HTML perubahan distribusi data |
+| Data versioning | DVC + DagsHub | Versioning data terpisah dari Git |
+| Containerisasi | Docker + Docker Compose | 3 replika API + MLflow server |
+| CI/CD | GitHub Actions | Pipeline otomatis end-to-end |
+| Dev environment | GitHub Codespaces | Reproducible dev environment |
+
+---
+
+## 📋 Quick Commands Cheatsheet
+
+```bash
+# ===== PIPELINE MANUAL =====
+python src/data/stream_generator.py          # 1. Fetch data
+python src/data/stream_preprocessor.py       # 2. Preprocess
+python src/models/train.py                   # 3. Train
+python src/models/register_model.py          # 4. Register model
+python src/monitoring/drift_detector.py      # 5. Cek drift
+
+# ===== API =====
+uvicorn src.api.main:app --port 8000         # Jalankan API
+curl http://localhost:8000/health            # Health check
+
+# ===== MLFLOW UI =====
+mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+
+# ===== DOCKER =====
+docker compose up -d                         # Jalankan semua
+docker compose ps                            # Cek status replika
+docker compose down                          # Stop semua
+
+# ===== DVC =====
+dvc status                                   # Cek status data
+dvc diff                                     # Lihat perubahan versi
+
+# ===== TESTS =====
+pytest tests/ -v                             # Jalankan unit tests
+```
+
+---
+
+## Links
+
+- **MLflow UI:** http://localhost:5000
+- **API Docs (Swagger):** http://localhost:8000/docs
+- **Drift Report:** `reports/drift_report.html`
+- **DVC Remote:** DagsHub
+- **CI/CD:** GitHub Actions tab di repositori
+
+---

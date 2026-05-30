@@ -20,23 +20,72 @@ services:
                --allowed-hosts '*'
                --cors-allowed-origins '*'"
 
-  api-service:
+  api-service-1:
     build: .
+    container_name: fraud-detection-api-1
     ports:
-      - "8000-8002:8000"
+      - "8001:8000"
     networks:
       - mlops-network
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow-server:5000
     depends_on:
       - mlflow-server
+
+  api-service-2:
+    build: .
+    container_name: fraud-detection-api-2
+    ports:
+      - "8002:8000"
+    networks:
+      - mlops-network
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+    depends_on:
+      - mlflow-server
+
+  api-service-3:
+    build: .
+    container_name: fraud-detection-api-3
+    ports:
+      - "8003:8000"
+    networks:
+      - mlops-network
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+    depends_on:
+      - mlflow-server
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - mlops-network
     volumes:
-      - model-data:/app/models
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          memory: 512M
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - mlops-network
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
 
 networks:
   mlops-network:
@@ -45,3 +94,5 @@ networks:
 volumes:
   mlflow-data:
   model-data:
+  prometheus-data:
+  grafana-data:

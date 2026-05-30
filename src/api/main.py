@@ -3,6 +3,7 @@ import mlflow.pyfunc
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from prometheus_fastapi_instrumentator import Instrumentator
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
@@ -12,26 +13,24 @@ app = FastAPI(
     description="Inference API untuk deteksi fraud transaksi crypto XBTUSD"
 )
 
-# Load model dari MLflow Registry
-try:
-    model = mlflow.pyfunc.load_model("models:/fraud-detection-best-model@champion")
-    print("Model loaded from MLflow Registry (champion)")
-except Exception:
-    model = joblib.load("models/trained/fraud_model.pkl")
-    print("Model loaded from local pkl (fallback)")
+# Setup Prometheus metrics endpoint
+Instrumentator().instrument(app).expose(app)
 
-# Load scaler yang sama dengan yang dipakai saat training
+# Load model langsung dari joblib
+model = joblib.load("models/trained/fraud_model.pkl")
+print("Model loaded from local pkl")
+
+# Load scaler
 scaler_amount = joblib.load("models/scalers/scaler_amount.pkl")
 scaler_volume = joblib.load("models/scalers/scaler_volume.pkl")
 print("Scalers loaded successfully")
 
-# User kirim nilai RAW dari Kraken, bukan pre-scaled
 class Transaction(BaseModel):
-    is_sell: int        # 1 = sell, 0 = buy
-    amount: float       # harga asli, contoh: 103500.25
-    volume: float       # volume asli, contoh: 0.00234
-    hour: int           # jam transaksi (0-23)
-    minute: int         # menit transaksi (0-59)
+    is_sell: int
+    amount: float
+    volume: float
+    hour: int
+    minute: int
 
     model_config = {
         "json_schema_extra": {
@@ -56,7 +55,6 @@ def health():
 @app.post("/predict")
 def predict(transaction: Transaction):
     try:
-        # Transform raw input pakai scaler yang SAMA dengan training
         amount_scaled = float(scaler_amount.transform([[transaction.amount]])[0][0])
         volume_scaled = float(scaler_volume.transform([[transaction.volume]])[0][0])
 
@@ -80,7 +78,7 @@ def predict(transaction: Transaction):
             "prediction":        prediction,
             "label":             "FRAUD" if prediction == 1 else "LEGITIMATE",
             "fraud_probability": fraud_proba,
-            "scaled_values":     {
+            "scaled_values": {
                 "amount_scaled": round(amount_scaled, 4),
                 "volume_scaled": round(volume_scaled, 4)
             }

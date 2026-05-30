@@ -9,3 +9,4 @@ kaggle>=1.6.0
 jupyter>=1.0.0
 pytest>=7.4.0
 python-binance==1.0.19
+prometheus-fastapi-instrumentator>=6.0.0

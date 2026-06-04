@@ -1,0 +1,26 @@
+{
+  "drift_detected": true,
+  "drift_share": 1.0,
+  "drifted_columns": 2,
+  "total_columns": 2,
+  "threshold": 0.3,
+  "drift_details": {
+    "amount": {
+      "ks_statistic": 1.0,
+      "p_value": 0.0,
+      "ref_mean": 78310.996,
+      "current_mean": 96979.6145,
+      "mean_shift_pct": 23.84,
+      "drift_detected": true
+    },
+    "volume": {
+      "ks_statistic": 1.0,
+      "p_value": 0.0,
+      "ref_mean": 0.0122,
+      "current_mean": 2.5429,
+      "mean_shift_pct": 20676.32,
+      "drift_detected": true
+    }
+  },
+  "timestamp": "2026-06-04T17:27:43.262287"
+}

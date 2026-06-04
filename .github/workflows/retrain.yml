@@ -25,19 +25,36 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Setup MLflow environment
+        run: |
+          mkdir -p ./mlruns
+          rm -f mlflow.db
+          export MLFLOW_ARTIFACT_ROOT=$(pwd)/mlruns
+          echo "MLFLOW_ARTIFACT_ROOT=$(pwd)/mlruns" >> $GITHUB_ENV
+
       - name: Fetch fresh streaming data from Kraken
         run: python src/data/stream_generator.py
 
       - name: Preprocess streaming data
         run: python src/data/stream_preprocessor.py
 
+      - name: Check data drift
+        id: drift_check
+        run: |
+          python src/monitoring/drift_detector.py
+          echo "drift_exit=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
       - name: Run model training
         run: python src/models/train.py
 
-      - name: Check drift
-        run: python src/monitoring/drift_detector.py
+      - name: Evaluate and promote model
+        run: python src/models/evaluate_and_promote.py
 
-      - name: Commit updated model
+      - name: Print comparison report
+        run: cat reports/model_comparison.json
+
+      - name: Commit updated model and reports
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"

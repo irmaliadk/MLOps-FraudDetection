@@ -472,3 +472,43 @@ pytest tests/ -v                             # Jalankan unit tests
 - **CI/CD:** GitHub Actions tab di repositori
 
 ---
+## Continuous Training & Retraining Triggers
+
+Sistem ini mengimplementasikan tiga skenario pemicu retraining otomatis:
+
+### Skenario A — Schedule-based Trigger
+Model diretrain setiap **Minggu jam 00:00 UTC** via GitHub Actions cron job.
+```yaml
+cron: '0 0 * * 0'
+```
+
+### Skenario B — Drift-based Trigger
+Retraining dipicu ketika **Data Drift terdeteksi** menggunakan
+Kolmogorov-Smirnov (KS) Test pada fitur `amount` dan `volume`.
+
+| Parameter | Nilai | Keterangan |
+|---|---|---|
+| KS p-value threshold | < 0.05 | Distribusi berbeda signifikan |
+| Mean shift threshold | > 10% | Rata-rata bergeser lebih dari 10% |
+| Drift column threshold | >= 30% | Minimal 30% kolom drift → retrain |
+
+### Skenario C — Performance-based Trigger
+Prometheus Alert aktif ketika:
+- Latency `/predict` > 500ms selama 2 menit
+- Error rate > 10 requests dalam 1 menit
+- Tidak ada request masuk selama 5 menit
+
+### Evaluasi Komparatif Otomatis
+Setelah retraining, model baru dibandingkan dengan model champion:
+```bash
+python src/models/evaluate_and_promote.py
+```
+Model baru hanya dipromosikan ke `@champion` jika F1 Score >= model lama.
+Hasil perbandingan disimpan di `reports/model_comparison.json`.
+
+### Simulasi Data Drift
+```bash
+python src/data/simulate_drift.py
+python src/data/stream_preprocessor.py
+python src/monitoring/drift_detector.py
+```

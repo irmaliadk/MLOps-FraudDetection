@@ -1,0 +1,29 @@
+groups:
+  - name: fraud_detection_alerts
+    rules:
+      - alert: HighLatency
+        expr: rate(http_request_duration_seconds_sum{handler="/predict"}[5m]) / rate(http_request_duration_seconds_count{handler="/predict"}[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency detected on /predict endpoint"
+          description: "Average latency is above 500ms for 2 minutes"
+
+      - alert: LowRequestRate
+        expr: rate(http_requests_total{handler="/predict"}[5m]) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No requests to /predict endpoint"
+          description: "No prediction requests for 5 minutes — possible system issue"
+
+      - alert: DataDriftDetected
+        expr: http_requests_total{handler="/predict", status="5xx"} > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on /predict — possible data drift"
+          description: "More than 10 prediction errors detected — trigger retraining"

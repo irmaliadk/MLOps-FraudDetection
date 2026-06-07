@@ -29,6 +29,7 @@ services:
       - mlops-network
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+      - USE_MLFLOW_REGISTRY=false
     depends_on:
       - mlflow-server
 
@@ -41,6 +42,7 @@ services:
       - mlops-network
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+      - USE_MLFLOW_REGISTRY=false
     depends_on:
       - mlflow-server
 
@@ -53,6 +55,7 @@ services:
       - mlops-network
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+      - USE_MLFLOW_REGISTRY=false
     depends_on:
       - mlflow-server
 

@@ -1,3 +1,4 @@
+import os
 import joblib
 import mlflow.pyfunc
 import pandas as pd
@@ -13,12 +14,23 @@ app = FastAPI(
     description="Inference API untuk deteksi fraud transaksi crypto XBTUSD"
 )
 
-# Setup Prometheus metrics endpoint
 Instrumentator().instrument(app).expose(app)
 
-# Load model langsung dari joblib
-model = joblib.load("models/trained/fraud_model.pkl")
-print("Model loaded from local pkl")
+# Environment variable untuk kontrol mode loading
+USE_MLFLOW_REGISTRY = os.getenv("USE_MLFLOW_REGISTRY", "false").lower() == "true"
+
+if USE_MLFLOW_REGISTRY:
+    try:
+        model = mlflow.pyfunc.load_model("models:/fraud-detection-best-model@champion")
+        print("Model loaded from MLflow Registry (@champion)")
+    except Exception as e:
+        print(f"MLflow Registry failed: {e}")
+        print("Falling back to local pkl...")
+        model = joblib.load("models/trained/fraud_model.pkl")
+        print("Model loaded from local pkl (fallback)")
+else:
+    model = joblib.load("models/trained/fraud_model.pkl")
+    print("Model loaded from local pkl (USE_MLFLOW_REGISTRY=false)")
 
 # Load scaler
 scaler_amount = joblib.load("models/scalers/scaler_amount.pkl")
@@ -46,7 +58,11 @@ class Transaction(BaseModel):
 
 @app.get("/")
 def root():
-    return {"message": "Fraud Detection API is running!", "version": "3.0.0"}
+    return {
+        "message": "Fraud Detection API is running!",
+        "version": "3.0.0",
+        "model_source": "MLflow Registry (@champion)" if USE_MLFLOW_REGISTRY else "Local pkl"
+    }
 
 @app.get("/health")
 def health():

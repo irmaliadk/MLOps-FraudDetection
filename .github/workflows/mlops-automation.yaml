@@ -13,10 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
       MLFLOW_TRACKING_URI: sqlite:///mlflow.db
       MLFLOW_ARTIFACT_ROOT: ./mlruns
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
@@ -56,16 +55,33 @@ jobs:
         run: |
           python -c "
           import mlflow
+          import os
           from mlflow.tracking import MlflowClient
 
-          mlflow.set_tracking_uri('sqlite:///mlflow.db')
+          if os.getenv('DAGSHUB_TOKEN'):
+              os.environ['MLFLOW_TRACKING_USERNAME'] = 'irmaliadk'
+              os.environ['MLFLOW_TRACKING_PASSWORD'] = os.getenv('DAGSHUB_TOKEN')
+              mlflow.set_tracking_uri('https://dagshub.com/irmaliadk/MLOps-FraudDetection.mlflow')
+          else:
+              mlflow.set_tracking_uri('sqlite:///mlflow.db')
+
           client = MlflowClient()
           experiment = client.get_experiment_by_name('fraud-detection-experiments')
+
+          if not experiment:
+              print('No experiment found yet, skipping evaluation')
+              exit(0)
+
           runs = client.search_runs(
               experiment_ids=[experiment.experiment_id],
               order_by=['metrics.f1_score DESC'],
               max_results=1
           )
+
+          if not runs:
+              print('No runs found yet, skipping evaluation')
+              exit(0)
+
           best_run = runs[0]
           f1 = best_run.data.metrics['f1_score']
           print(f'Best F1 Score: {f1:.4f}')

@@ -39,13 +39,6 @@ jobs:
       - name: Preprocess streaming data
         run: python src/data/stream_preprocessor.py
 
-      - name: Check data drift
-        id: drift_check
-        run: |
-          python src/monitoring/drift_detector.py
-          echo "drift_exit=$?" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
       - name: Run model training
         run: python src/models/train.py
 

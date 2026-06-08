@@ -13,7 +13,7 @@ KAGGLE_FRAUD_RATE     = 0.0725  # 7.25%
 KAGGLE_AMOUNT_RATIO   = 799.98 / 742.52   # 1.077x
 KAGGLE_VELOCITY_RATIO = 0.0129 / 0.0114   # 1.132x
 
-def get_crypto_trades(symbol: str = "XBTUSD", limit: int = 100) -> pd.DataFrame:
+def get_crypto_trades(symbol: str = "XBTUSD", limit: int = 1000) -> pd.DataFrame:
     """Ambil data transaksi crypto terbaru dari Kraken Public API."""
     url      = "https://api.kraken.com/0/public/Trades"
     params   = {"pair": symbol, "count": limit}
@@ -144,4 +144,4 @@ def run_stream(symbol: str = "XBTUSD", interval_seconds: int = 30, max_batches: 
     print("\nStreaming complete!")
 
 if __name__ == "__main__":
-    run_stream(symbol="XBTUSD", interval_seconds=30, max_batches=3)
+    run_stream(symbol="XBTUSD", interval_seconds=30, max_batches=5)

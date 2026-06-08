@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 
-def simulate_shifted_data(n_samples: int = 200) -> pd.DataFrame:
+def simulate_shifted_data(n_samples: int = 1000) -> pd.DataFrame:
     """
     Buat data dengan distribusi yang sengaja di-shift
     untuk mensimulasikan data drift.
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     print("Shifted BTC price: ~95000-100000 (market crash scenario)")
     print()
 
-    df = simulate_shifted_data(n_samples=200)
+    df = simulate_shifted_data(n_samples=1000)
     output_path = save_shifted_data(df)
 
     print(f"\nData statistics:")

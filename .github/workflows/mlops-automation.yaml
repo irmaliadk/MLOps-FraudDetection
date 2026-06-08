@@ -13,10 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
       MLFLOW_TRACKING_URI: sqlite:///mlflow.db
       MLFLOW_ARTIFACT_ROOT: ./mlruns
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
     steps:
       - name: Checkout repository

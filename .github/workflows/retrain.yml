@@ -12,6 +12,7 @@ jobs:
     env:
       MLFLOW_TRACKING_URI: sqlite:///mlflow.db
       MLFLOW_ARTIFACT_ROOT: ./mlruns
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
     steps:
       - name: Checkout repository

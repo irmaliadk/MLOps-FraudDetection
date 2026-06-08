@@ -10,10 +10,21 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, roc_auc_score, precision_score, recall_score
 
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
-mlflow.set_registry_uri("sqlite:///mlflow.db")
-artifact_root = os.environ.get("MLFLOW_ARTIFACT_ROOT", "./mlruns")
-os.makedirs(artifact_root, exist_ok=True)
+DAGSHUB_URI = "https://dagshub.com/irmaliadk/MLOps-FraudDetection.mlflow"
+LOCAL_URI   = "sqlite:///mlflow.db"
+
+if os.getenv("DAGSHUB_TOKEN"):
+    os.environ["MLFLOW_TRACKING_USERNAME"] = "irmaliadk"
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("DAGSHUB_TOKEN")
+    mlflow.set_tracking_uri(DAGSHUB_URI)
+    mlflow.set_registry_uri(DAGSHUB_URI)
+    print("MLflow tracking: DagsHub")
+else:
+    mlflow.set_tracking_uri(LOCAL_URI)
+    mlflow.set_registry_uri(LOCAL_URI)
+    artifact_root = os.environ.get("MLFLOW_ARTIFACT_ROOT", "./mlruns")
+    os.makedirs(artifact_root, exist_ok=True)
+    print("MLflow tracking: Local SQLite")
 
 def load_data() -> pd.DataFrame:
     streaming_path = Path("data/processed/streaming")

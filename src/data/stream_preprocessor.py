@@ -35,7 +35,9 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     print("Scalers saved: models/scalers/scaler_amount.pkl & scaler_volume.pkl")
 
     # Feature engineering
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format='mixed')
+    df["timestamp"] = pd.to_datetime(df["timestamp"], format='mixed', utc=True)
+    # Convert UTC ke WIB (UTC+7)
+    df["timestamp"] = df["timestamp"].dt.tz_convert("Asia/Jakarta")
     df["hour"]      = df["timestamp"].dt.hour
     df["minute"]    = df["timestamp"].dt.minute
     df["is_sell"]   = (df["side"] == "s").astype(int)

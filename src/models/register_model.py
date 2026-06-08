@@ -1,7 +1,20 @@
 import mlflow
 from mlflow.tracking import MlflowClient
+import os
 
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+DAGSHUB_URI = "https://dagshub.com/irmaliadk/MLOps-FraudDetection.mlflow"
+LOCAL_URI   = "sqlite:///mlflow.db"
+
+if os.getenv("DAGSHUB_TOKEN"):
+    os.environ["MLFLOW_TRACKING_USERNAME"] = "irmaliadk"
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("DAGSHUB_TOKEN")
+    mlflow.set_tracking_uri(DAGSHUB_URI)
+    mlflow.set_registry_uri(DAGSHUB_URI)
+    print("MLflow tracking: DagsHub")
+else:
+    mlflow.set_tracking_uri(LOCAL_URI)
+    mlflow.set_registry_uri(LOCAL_URI)
+    print("MLflow tracking: Local SQLite")
 
 def register_best_model():
     """
@@ -33,7 +46,22 @@ def register_best_model():
     print(f"Run ID      : {run_id}")
     print(f"F1 Score    : {f1:.4f}")
 
-    model_uri = f"runs:/{run_id}/model"
+    # Cari logged model dari run ini
+    try:
+        logged_models = client.search_logged_models(
+            experiment_ids=[experiment.experiment_id],
+            filter_string=f"source_run_id = '{run_id}'"
+        )
+        if logged_models:
+            model_uri = logged_models[0].model_uri
+            print(f"Using logged model URI: {model_uri}")
+        else:
+            model_uri = f"runs:/{run_id}/model"
+            print(f"Using run artifact URI: {model_uri}")
+    except Exception:
+        model_uri = f"runs:/{run_id}/model"
+        print(f"Using fallback URI: {model_uri}")
+    
     result    = mlflow.register_model(
         model_uri=model_uri,
         name="fraud-detection-best-model"

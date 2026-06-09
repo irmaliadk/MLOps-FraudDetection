@@ -8,8 +8,19 @@ import pandas as pd
 import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
+import os
 
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+DAGSHUB_URI = "https://dagshub.com/irmaliadk/MLOps-FraudDetection.mlflow"
+LOCAL_URI = "sqlite:///mlflow.db"
+
+if os.getenv("DAGSHUB_TOKEN"):
+    os.environ["MLFLOW_TRACKING_USERNAME"] = "irmaliadk"
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("DAGSHUB_TOKEN")
+    mlflow.set_tracking_uri(DAGSHUB_URI)
+    mlflow.set_registry_uri(DAGSHUB_URI)
+else:
+    mlflow.set_tracking_uri(LOCAL_URI)
+    mlflow.set_registry_uri(LOCAL_URI)
 
 app = FastAPI(
     title="MLflow Model Serving",

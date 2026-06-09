@@ -97,6 +97,5 @@ networks:
 
 volumes:
   mlflow-data:
-  model-data:
   prometheus-data:
   grafana-data:

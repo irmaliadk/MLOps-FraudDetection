@@ -120,7 +120,7 @@ def save_batch(df: pd.DataFrame, symbol: str = "XBTUSD") -> str:
     print(f"  Saved: {output_path}")
     return output_path
 
-def run_stream(symbol: str = "XBTUSD", interval_seconds: int = 30, max_batches: int = 3):
+def run_stream(symbol: str = "XBTUSD", interval_seconds: int = 30, max_batches: int = 5):
     """Jalankan streaming data secara berkala."""
     print(f"Starting stream for {symbol}...")
     print(f"Fetching every {interval_seconds}s, max {max_batches} batches")

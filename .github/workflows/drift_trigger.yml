@@ -24,6 +24,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Setup MLflow environment
+        run: |
+          mkdir -p ./mlruns
+          rm -f mlflow.db
+          echo "MLFLOW_ARTIFACT_ROOT=$(pwd)/mlruns" >> $GITHUB_ENV
+
       - name: Fetch fresh streaming data from Kraken
         run: python src/data/stream_generator.py
 

@@ -11,8 +11,21 @@ from pathlib import Path
 from mlflow.tracking import MlflowClient
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
+import os
 
-mlflow.set_tracking_uri("sqlite:///mlflow.db")
+DAGSHUB_URI = "https://dagshub.com/irmaliadk/MLOps-FraudDetection.mlflow"
+LOCAL_URI   = "sqlite:///mlflow.db"
+
+if os.getenv("DAGSHUB_TOKEN"):
+    os.environ["MLFLOW_TRACKING_USERNAME"] = "irmaliadk"
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("DAGSHUB_TOKEN")
+    mlflow.set_tracking_uri(DAGSHUB_URI)
+    mlflow.set_registry_uri(DAGSHUB_URI)
+    print("MLflow tracking: DagsHub")
+else:
+    mlflow.set_tracking_uri(LOCAL_URI)
+    mlflow.set_registry_uri(LOCAL_URI)
+    print("MLflow tracking: Local SQLite")
 
 def get_current_champion_f1() -> float:
     """Ambil F1 Score model champion saat ini dari MLflow."""

@@ -5,7 +5,7 @@
 
 ---
 
-## 🏗️ Arsitektur Pipeline
+## Arsitektur Pipeline
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -62,9 +62,9 @@
 
 ---
 
-## 🤔 Kenapa MLOps?
+## Kenapa MLOps?
 
-| Tanpa MLOps | Dengan MLOps (proyek ini) |
+| Tanpa MLOps | Dengan MLOps |
 |---|---|
 | Training manual tiap ada data baru | Retrain otomatis via 3 trigger GitHub Actions |
 | Model tidak terpantau di production | Drift detection KS Test + Prometheus + Grafana |
@@ -75,7 +75,7 @@
 
 ---
 
-## 📁 Struktur Direktori
+## Struktur Direktori
 
 ```
 MLOps-FraudDetection/
@@ -135,7 +135,7 @@ MLOps-FraudDetection/
 
 ---
 
-## 🔍 Detail Tiap Komponen
+## Detail Tiap Komponen
 
 ### 1. Data Ingestion — `stream_generator.py`
 
@@ -195,7 +195,7 @@ python src/data/stream_preprocessor.py
 
 | Model | Parameter | F1 Score |
 |---|---|---|
-| **RandomForest** ⭐ | n_estimators=100, class_weight=balanced | **0.8660** |
+| **RandomForest** | n_estimators=100, class_weight=balanced | **0.8660** |
 | RandomForest | n_estimators=200, max_depth=10 | 0.8262 |
 | DecisionTree | max_depth=10, class_weight=balanced | 0.8401 |
 | LogisticRegression | C=0.1, max_iter=1000 | 0.4264 |
@@ -315,10 +315,10 @@ python src/monitoring/drift_detector.py
 ### 7. Streamlit Dashboard — `src/dashboard/app.py`
 
 Dashboard demo dengan 4 tab:
-- **🎯 Live Prediction** — input transaksi dan prediksi real-time
-- **📊 Data Overview** — visualisasi distribusi data streaming
-- **🔬 Drift Detection** — status drift dan detail per kolom
-- **📈 Model Performance** — perbandingan 4 model eksperimen
+- **Live Prediction** — input transaksi dan prediksi real-time
+- **Data Overview** — visualisasi distribusi data streaming
+- **Drift Detection** — status drift dan detail per kolom
+- **Model Performance** — perbandingan 4 model eksperimen
 
 ```bash
 streamlit run src/dashboard/app.py
@@ -327,7 +327,7 @@ streamlit run src/dashboard/app.py
 
 ---
 
-## 🚀 Cara Menjalankan
+## Cara Menjalankan
 
 ### Setup Environment
 ```bash
@@ -389,7 +389,7 @@ python src/monitoring/drift_detector.py # Deteksi drift
 
 ---
 
-## ⚙️ CI/CD — GitHub Actions
+## CI/CD — GitHub Actions
 
 ### 3 Workflow Independen
 
@@ -419,7 +419,7 @@ Cron 12 jam → Fetch data → Preprocess → Cek drift
 
 ---
 
-## 📊 Observability
+## Observability
 
 ### Prometheus + Grafana
 ```bash
@@ -440,7 +440,7 @@ docker compose up -d
 
 ---
 
-## 🗃️ Data Versioning — DVC + DagsHub
+## Data Versioning — DVC + DagsHub
 
 ```bash
 dvc status          # Cek status data
@@ -451,7 +451,7 @@ dvc pull            # Download dari DagsHub
 
 ---
 
-## 🔗 Links Penting
+## Links Penting
 
 | Resource | URL |
 |---|---|
@@ -463,7 +463,7 @@ dvc pull            # Download dari DagsHub
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Komponen | Tools |
 |---|---|
@@ -484,7 +484,7 @@ dvc pull            # Download dari DagsHub
 
 ---
 
-## 📋 Quick Commands Cheatsheet
+## Quick Commands Cheatsheet
 
 ```bash
 # ===== PIPELINE MANUAL =====
@@ -523,7 +523,7 @@ python src/monitoring/drift_detector.py
 
 ---
 
-## 🌿 Branching Strategy
+## Branching Strategy
 
 Proyek menggunakan **GitHub Flow**:
 - `main` — branch production, hanya menerima merge dari Pull Request

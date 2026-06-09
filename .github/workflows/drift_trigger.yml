@@ -34,30 +34,42 @@ jobs:
         id: drift_check
         run: |
           python src/monitoring/drift_detector.py
-          echo "drift_detected=$?" >> $GITHUB_OUTPUT
+          echo "drift_detected=0" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Set drift flag
+        id: set_flag
+        run: |
+          if [ "${{ steps.drift_check.outcome }}" == "failure" ]; then
+            echo "drift_detected=1" >> $GITHUB_OUTPUT
+            echo "⚠️ Drift detected — will retrain"
+          else
+            echo "drift_detected=0" >> $GITHUB_OUTPUT
+            echo "✅ No drift detected — will skip retraining"
+          fi
 
       - name: Skip retraining if no drift
-        if: steps.drift_check.outputs.drift_detected == '0'
+        if: steps.set_flag.outputs.drift_detected == '0'
         run: |
           echo "✅ No drift detected — skipping retraining"
           echo "Model is still relevant, no action needed"
 
       - name: Retrain model if drift detected
-        if: steps.drift_check.outputs.drift_detected == '1'
+        if: steps.set_flag.outputs.drift_detected == '1'
         run: |
           echo "⚠️ Drift detected — starting retraining pipeline"
           python src/models/train.py
 
       - name: Evaluate and promote model if drift detected
-        if: steps.drift_check.outputs.drift_detected == '1'
+        if: steps.set_flag.outputs.drift_detected == '1'
         run: python src/models/evaluate_and_promote.py
 
       - name: Print comparison report if retrained
-        if: steps.drift_check.outputs.drift_detected == '1'
+        if: steps.set_flag.outputs.drift_detected == '1'
         run: cat reports/model_comparison.json
 
       - name: Commit updated model if retrained
-        if: steps.drift_check.outputs.drift_detected == '1'
+        if: steps.set_flag.outputs.drift_detected == '1'
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
